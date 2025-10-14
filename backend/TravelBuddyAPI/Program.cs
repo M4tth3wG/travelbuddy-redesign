@@ -8,9 +8,6 @@ using RestSharp;
 using TravelBuddyAPI.Interfaces;
 using TravelBuddyAPI.Services;
 using Microsoft.IdentityModel.Tokens;
-using Azure.Security.KeyVault.Certificates;
-using System.Security.Cryptography.X509Certificates;
-using System.Net;
 
 namespace TravelBuddyAPI
 {
@@ -68,43 +65,6 @@ namespace TravelBuddyAPI
                 });
             });
 
-            // Adding secrets to the configuration from .env file
-            if (builder.Environment.IsDevelopment())
-            {
-                DotNetEnv.Env.Load(); // For running app outside of Docker
-                builder.Configuration["MSSQL_SA_PASSWORD"] = DotNetEnv.Env.GetString("MSSQL_SA_PASSWORD");
-                builder.Configuration["Geoapify:Key"] = DotNetEnv.Env.GetString("GEOAPIFY_KEY");
-                builder.Configuration["Cognito:Authority"] = DotNetEnv.Env.GetString("COGNITO_AUTHORITY");
-                builder.Configuration["Cognito:Audience"] = DotNetEnv.Env.GetString("COGNITO_AUDIENCE");
-            }
-            else if (builder.Environment.IsProduction())
-            {
-                var keyVaultEndpoint = new Uri(builder.Configuration["Azure:KeyVault:Uri"] ?? string.Empty);
-
-                builder.Configuration.AddAzureKeyVault(
-                    keyVaultEndpoint,
-                    new DefaultAzureCredential(),
-                    new CustomKeyVaultSecretManager());
-
-                var certificateClient = new CertificateClient(keyVaultEndpoint, new DefaultAzureCredential());
-                var certificateName = builder.Configuration["Azure:KeyVault:CertificateName"];
-                var certificate = certificateClient.DownloadCertificate(certificateName).Value;
-
-                builder.WebHost.ConfigureKestrel(options =>
-                {
-                    options.ConfigureHttpsDefaults(httpsOptions =>
-                    {
-                        httpsOptions.ServerCertificate = certificate;
-                    });
-
-                    options.Listen(IPAddress.Any, 8080);
-                    options.Listen(IPAddress.Any, 8081, listenOptions =>
-                    {
-                        listenOptions.UseHttps();
-                    });
-                });
-            }
-
             builder.Services.AddAuthentication(options =>
            {
                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -142,10 +102,18 @@ namespace TravelBuddyAPI
             var app = builder.Build();
 
             // Migrate the database
-            using (var scope = app.Services.CreateScope())
+            try
             {
+                using var scope = app.Services.CreateScope();
                 var dbContext = scope.ServiceProvider.GetRequiredService<TravelBuddyDbContext>();
                 dbContext.Database.Migrate();
+            }
+            catch (Exception ex) when (ex is InvalidOperationException || ex is Microsoft.EntityFrameworkCore.Storage.RetryLimitExceededException || ex is Microsoft.Data.SqlClient.SqlException)
+            {
+                var logger = app.Services.GetRequiredService<ILogger<Program>>();
+                logger.LogError(ex, "An error occurred while migrating the database: {Message}", ex.Message);
+                if (ex.InnerException != null)
+                    logger.LogError("Inner exception: {InnerMessage}", ex.InnerException.Message);
             }
 
             // Development configuration
