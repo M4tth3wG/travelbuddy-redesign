@@ -89,15 +89,29 @@ namespace TravelBuddyAPI
 
 
             var databaseConnectionString = builder.Configuration.GetConnectionString("TravelBuddyDb");
-            if (builder.Environment.IsDevelopment())
-            {
-                databaseConnectionString = databaseConnectionString?.Replace("{MSSQL_SA_PASSWORD}", builder.Configuration["MSSQL_SA_PASSWORD"]);
-            }
+            // if (builder.Environment.IsDevelopment())
+            // {
+            //     databaseConnectionString = databaseConnectionString?.Replace("{MSSQL_SA_PASSWORD}", builder.Configuration["MSSQL_SA_PASSWORD"]);
+            // }
 
-            builder.Services.AddDbContext<TravelBuddyDbContext>(options =>
+            try
             {
-                options.UseSqlServer(databaseConnectionString);
-            });
+                if (string.IsNullOrWhiteSpace(databaseConnectionString))
+                    throw new InvalidOperationException("Database connection string 'TravelBuddyDb' is missing or empty.");
+
+                builder.Services.AddDbContext<TravelBuddyDbContext>(options =>
+                {
+                    options.UseSqlServer(databaseConnectionString);
+                });
+            }
+            catch (Exception ex)
+            {
+                using var loggerFactory = LoggerFactory.Create(lb => lb.AddConsole());
+                var logger = loggerFactory.CreateLogger<Program>();
+                logger.LogError(ex, "Failed to configure TravelBuddyDbContext. Skipping DbContext registration.");
+                if (ex.InnerException != null)
+                    logger.LogError("Inner exception: {InnerMessage}", ex.InnerException.Message);
+            }
 
             var app = builder.Build();
 
