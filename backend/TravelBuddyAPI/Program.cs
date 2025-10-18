@@ -113,6 +113,14 @@ namespace TravelBuddyAPI
                     logger.LogError("Inner exception: {InnerMessage}", ex.InnerException.Message);
             }
 
+            builder.Services.AddCors(options =>
+            {
+                options.AddDefaultPolicy(policy =>
+                    policy.AllowAnyOrigin()
+                         .AllowAnyMethod()
+                         .AllowAnyHeader());
+            });
+
             var app = builder.Build();
 
             // Migrate the database
