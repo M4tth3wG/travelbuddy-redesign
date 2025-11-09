@@ -89,10 +89,6 @@ namespace TravelBuddyAPI
 
 
             var databaseConnectionString = builder.Configuration.GetConnectionString("TravelBuddyDb");
-            // if (builder.Environment.IsDevelopment())
-            // {
-            //     databaseConnectionString = databaseConnectionString?.Replace("{MSSQL_SA_PASSWORD}", builder.Configuration["MSSQL_SA_PASSWORD"]);
-            // }
 
             try
             {

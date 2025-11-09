@@ -1,15 +1,11 @@
 services:
   sqlserver:
-    build:
-      context: .
-      dockerfile: Dockerfile.sqlserver
+    image: mcr.microsoft.com/mssql/server:2022-latest
     container_name: sql-server-container
     ports:
       - "1433:1433"
     volumes:
       - sqlserverdata:/var/opt/mssql
-    networks:
-      - travelbuddynetwork
     environment:
       - ACCEPT_EULA=Y
       - MSSQL_SA_PASSWORD=${MSSQL_SA_PASSWORD}
@@ -26,38 +22,16 @@ services:
     container_name: travel-buddy-api-container
     environment:
       - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT}
-      - GEOAPIFY_KEY=${GEOAPIFY_KEY}
+      - GEOAPIFY__KEY=${GEOAPIFY__KEY}
       - MSSQL_SA_PASSWORD=${MSSQL_SA_PASSWORD}
-      - COGNITO_AUTHORITY=${COGNITO_AUTHORITY}
-      - COGNITO_AUDIENCE=${COGNITO_AUDIENCE}
+      - COGNITO__AUTHORITY=${COGNITO__AUTHORITY}
+      - COGNITO__AUDIENCE=${COGNITO__AUDIENCE}
+      - ConnectionStrings__TravelBuddyDb=Server=sqlserver;Database=TravelBuddyDb;User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True;
     ports:
-      - "8080:8080"
+      - "80:8080"
     depends_on:
       sqlserver:
         condition: service_healthy
-    networks:
-      - travelbuddynetwork
-
-  db-init:
-    image: mcr.microsoft.com/mssql-tools:latest
-    container_name: db-init-container
-    depends_on:
-      sqlserver:
-        condition: service_healthy
-    environment:
-      - MSSQL_SA_PASSWORD=${MSSQL_SA_PASSWORD}
-    networks:
-      - travelbuddynetwork
-    volumes:
-      - ./init-db.sql:/init-db.sql
-    entrypoint: [
-      "sh", "-c",
-      "until /opt/mssql-tools/bin/sqlcmd -S sqlserver -U sa -P \"$MSSQL_SA_PASSWORD\" -C -d master -i /init-db.sql; do echo 'Waiting for SQL Server to be ready...'; sleep 5; done;"
-    ]
-
-networks:
-  travelbuddynetwork:
-    driver: bridge
 
 volumes:
   sqlserverdata:
