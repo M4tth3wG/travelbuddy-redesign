@@ -145,6 +145,8 @@ namespace TravelBuddyAPI
 
             app.UseAuthorization();
 
+            app.UseCors();
+
             // Mapping endpoints
             app.MapTripsEndpoints();
             app.MapCategoryProfilesEndpoints();
