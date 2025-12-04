@@ -260,7 +260,10 @@ const TripDetailsView = () => {
       if (tripDayId) {
         console.log("Redirecting to day with id " + tripDayId);
         setDateModalVisible(false);
-        router.push(`/trips/details/${trip_id}/day/${tripDayId}`);
+        router.push({
+          pathname: `/trips/details/${trip_id}/day/${tripDayId}`,
+          params: { tripName: tripDetails?.name },
+        });
       } else {
         console.error("Day not found");
       }
@@ -305,7 +308,8 @@ const TripDetailsView = () => {
               color={theme.colors.onPrimary}
               style={styles.fab}
               icon={CALENDAR_ICON}
-              customSize={width * 0.25}
+              label="Wybierz dzień"
+              customSize={width * 0.1}
               onPress={handlePress}
             />
           </View>

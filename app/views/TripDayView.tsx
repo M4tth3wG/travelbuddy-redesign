@@ -3,6 +3,7 @@ import {
   Fragment,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -40,6 +41,7 @@ import {
   REMOVE_NOTIFICATION_ICON,
   CALENDAR_ADD_ICON,
   FILL_SURVEY_ICON,
+  CALENDAR_ADD_ICON_MATERIAL,
 } from "@/constants/Icons";
 import { Option } from "@/types/TripDayData";
 import useTripDayDetails from "@/composables/useTripDay";
@@ -63,9 +65,16 @@ import {
   schedulePushNotification,
 } from "@/utils/notifications";
 import NotificationFormBottomSheet from "@/components/NotificationFormBottomSheet";
-import { addEventToMainCalendar } from "@/utils/calendar";
+import {
+  addEventToMainCalendar,
+  addTripDayPointsToCalendar,
+  addWholeTripDayToCalendar,
+} from "@/utils/calendar";
 import { API_REJECT_REVIEW } from "@/constants/Endpoints";
 import { useShouldRefresh } from "@/context/ShouldRefreshContext";
+import { TripDay } from "@/types/Trip";
+import { Event } from "expo-calendar";
+import { useNavigation } from "@react-navigation/native";
 
 const { width } = Dimensions.get("window");
 
@@ -90,7 +99,7 @@ const TripDayView = () => {
   const router = useRouter();
   const params = useLocalSearchParams();
   const { api } = useAuth();
-  const { trip_id, day_id, refresh } = params;
+  const { trip_id, day_id, tripName, refresh } = params;
   const { showSnackbar } = useSnackbar();
 
   const { refreshScreens, removeRefreshScreen } = useShouldRefresh();
@@ -467,6 +476,8 @@ const TripDayView = () => {
     showSnackbar,
   ]);
 
+  const navigation = useNavigation();
+
   const transferPointOptions: Option[] = useMemo(() => {
     const previousTransferPoint = getTripPoint(
       selectedTransferPointData.fromTripPointId as string,
@@ -650,6 +661,50 @@ const TripDayView = () => {
 
     return true;
   };
+
+  useLayoutEffect(() => {
+    const showMenu = tripPoints.length > 0;
+
+    navigation.setOptions({
+      actions: showMenu
+        ? [
+            {
+              hasMenu: true,
+              menuActions: [
+                {
+                  title: "Dodaj punkty dnia do kalendarza",
+                  titleStyle: {
+                    color: theme.colors.onSurface,
+                    flexWrap: "wrap",
+                    width: 200,
+                  },
+                  icon: CALENDAR_ADD_ICON_MATERIAL,
+                  color: theme.colors.onSurface,
+                  onPress: () =>
+                    addTripDayPointsToCalendar(tripDay, tripPoints),
+                },
+                {
+                  title: "Dodaj cały dzień do kalendarza",
+                  titleStyle: {
+                    color: theme.colors.onSurface,
+                    flexWrap: "wrap",
+                    width: 200,
+                  },
+                  icon: CALENDAR_ADD_ICON_MATERIAL,
+                  color: theme.colors.onSurface,
+                  onPress: () =>
+                    addWholeTripDayToCalendar(
+                      tripDay,
+                      tripPoints,
+                      tripName as string,
+                    ),
+                },
+              ],
+            },
+          ]
+        : [], // brak akcji, menu się nie pojawi
+    });
+  }, [navigation, tripDay, tripPoints, tripName, theme]);
 
   const getActionsForSelectedTripPoint: Action[] = useMemo(() => {
     if (!selectedTripPoint) return [];
