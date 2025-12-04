@@ -163,7 +163,14 @@ const ManageProfileCategoryView: React.FC<ManageProfileCategoryViewProps> = ({
   }, [fetchLoading, editLoading, favouritesLoading, itemsLoading]);
 
   useEffect(() => {
-    setError(fetchError || editError || favouritesError || itemsError || "");
+    const favouriteErrorFiltered =
+      favouritesError && favouritesError !== "Favourite profiles not found."
+        ? favouritesError
+        : "";
+
+    setError(
+      fetchError || editError || favouriteErrorFiltered || itemsError || "",
+    );
   }, [fetchError, editError, favouritesError, itemsError]);
 
   const deleteProfile = useCallback(async () => {

@@ -280,6 +280,7 @@ const ProfileBrowseView: React.FC<ProfileBrowseViewProps> = ({
         onClose={() => {
           setIsBottomSheetVisible(false);
           Keyboard.dismiss();
+          setSelectedProfile(null);
         }}
         profileType={profileType}
       />

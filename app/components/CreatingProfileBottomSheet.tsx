@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useCallback, useState } from "react";
-import { View, Text, StyleSheet, TouchableWithoutFeedback } from "react-native";
+import { View, Text, StyleSheet, TouchableWithoutFeedback, Keyboard } from "react-native";
 import { MD3Theme, TextInput, useTheme } from "react-native-paper";
 import BottomSheet, { BottomSheetView } from "@gorhom/bottom-sheet";
 import Animated, {
@@ -54,6 +54,13 @@ const CreatingProfileBottonSheet: React.FC<BottomSheetComponentProps> = ({
     [onClose],
   );
 
+  const handleClose = () => {
+    Keyboard.dismiss();
+    onClose();
+    setProfileName("");
+    setError("");
+  };
+
   const handleCreateProfileError = (err: any) => {
     if (err.response.data.endsWith(DUPLICATE_PROFILE_NAME_MESSAGE)) {
       return "Istnieje już profil z tą nazwą!";
@@ -105,25 +112,28 @@ const CreatingProfileBottonSheet: React.FC<BottomSheetComponentProps> = ({
           conditionIds: [],
         },
         (newProfile) => {
-          if (!error) {
-            const path =
-              profileType === "Category"
-                ? `/(auth)/(tabs)/settings/categoryProfiles/manage`
-                : `/(auth)/(tabs)/settings/conditionProfiles/manage`;
-            setError("");
-            setProfileName("");
-            onClose();
-            router.push(`${path}/${newProfile.id}`);
-          }
+          setError("");
+          setProfileName("");
+          onClose();
+          const path =
+            profileType === "Category"
+              ? `/(auth)/(tabs)/settings/categoryProfiles/manage`
+              : `/(auth)/(tabs)/settings/conditionProfiles/manage`;
+          router.push(`${path}/${newProfile.id}`);
         },
       );
     },
-    [handleCreateProfile, router, profileType, error],
+    [handleCreateProfile, router, profileType],
   );
 
   useEffect(() => {
-    if (isVisible) sheetRef.current?.snapToIndex(0);
-    else sheetRef.current?.close();
+    if (isVisible) {
+      setError("");
+      setProfileName("");
+      sheetRef.current?.snapToIndex(0);
+    } else {
+      sheetRef.current?.close();
+    }
   }, [isVisible]);
 
   const animatedStyles = useAnimatedStyle(() => {
@@ -138,7 +148,7 @@ const CreatingProfileBottonSheet: React.FC<BottomSheetComponentProps> = ({
         ref={sheetRef}
         index={isVisible ? 0 : -1}
         enablePanDownToClose
-        onClose={onClose}
+        onClose={handleClose}
         onAnimate={handleAnimate}
         containerStyle={styles.containerStyle}
         backgroundComponent={({ style }) => (
