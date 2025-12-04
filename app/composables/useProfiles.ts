@@ -142,7 +142,10 @@ export const useGetFavouriteProfiles = (
   options: UseApiOptions = { immediate: true },
 ) => {
   const [favouriteProfiles, setFavouriteProfiles] = useState<ProfileDictionary>(
-    { Category: null, Condition: null },
+    {
+      Category: null,
+      Condition: null,
+    },
   );
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -156,12 +159,13 @@ export const useGetFavouriteProfiles = (
       const response = await api!.get<FavouriteProfilesResponse>(
         API_FAVOURITE_PROFILES,
       );
+
       setFavouriteProfiles({
-        Category: response.data.categoryProfileId,
-        Condition: response.data.conditionProfileId,
+        Category: response.data?.categoryProfileId ?? null,
+        Condition: response.data?.conditionProfileId ?? null,
       });
     } catch (err: any) {
-      console.error(err.response.data);
+      console.log(err.response.data);
       if (err.response && err.response.status !== 404) {
         setError("Wystąpił błąd podczas pobierania ulubionych profili.");
       }

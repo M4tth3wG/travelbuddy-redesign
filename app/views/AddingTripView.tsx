@@ -118,11 +118,8 @@ const AddingTripView = () => {
     refetch: conditionProfileRefetch,
   } = useGetConditionProfiles();
 
-  const {
-    favouriteProfiles,
-    loading: favouriteProfilesLoading,
-    error: favouriteProfilesError,
-  } = useGetFavouriteProfiles();
+  const { favouriteProfiles, loading: favouriteProfilesLoading } =
+    useGetFavouriteProfiles();
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -133,8 +130,8 @@ const AddingTripView = () => {
   }, [navigation]);
 
   useEffect(() => {
-    setCategoryProfileId(favouriteProfiles.Category);
-    setConditionProfileId(favouriteProfiles.Condition);
+    setCategoryProfileId(favouriteProfiles.Category ?? null);
+    setConditionProfileId(favouriteProfiles.Condition ?? null);
   }, [favouriteProfiles]);
 
   useEffect(() => {
@@ -153,13 +150,9 @@ const AddingTripView = () => {
   useEffect(() => {
     setErrors((prev) => ({
       ...prev,
-      ["api"]:
-        categoryProfilesError ||
-        conditionProfilesError ||
-        favouriteProfilesError ||
-        "",
+      ["api"]: categoryProfilesError || conditionProfilesError || "",
     }));
-  }, [categoryProfilesError, conditionProfilesError, favouriteProfilesError]);
+  }, [categoryProfilesError, conditionProfilesError]);
 
   useEffect(() => {
     const backHandler = BackHandler.addEventListener(
