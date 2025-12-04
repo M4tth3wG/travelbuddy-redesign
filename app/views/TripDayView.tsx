@@ -10,7 +10,7 @@ import {
 import { Dimensions, ScrollView, StyleSheet, View } from "react-native";
 import { useTheme, FAB, TextInput, Text } from "react-native-paper";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { TripPointCard } from "@/components/TripPointCard";
 import { TransferPointNode } from "@/components/TransferPointNode";
 import CreatingTripPointSelector from "@/components/CreatingTripPointSelector";
