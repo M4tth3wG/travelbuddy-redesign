@@ -23,6 +23,7 @@ export interface TripViewModel {
   budget: string;
   categoryProfileName: string;
   conditionProfileName: string;
+  notes: string;
 }
 
 export interface CreateTripRequest {
@@ -47,6 +48,7 @@ export interface TripDetails extends TripRequest {
   actualCost: number;
   tripDays: TripDay[];
   isArchived?: boolean;
+  notes: string;
 }
 
 export interface TripSummaryPoint {
@@ -71,4 +73,11 @@ export interface DateRange {
 
 export interface TripErrors {
   [key: string]: string | undefined;
+}
+
+
+export interface TripNote {
+  id: string;
+  content: string;
+  tripId: string;
 }

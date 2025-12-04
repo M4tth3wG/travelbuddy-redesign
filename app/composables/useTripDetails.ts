@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect, useCallback } from "react";
-import { TripSummary, TripRequest, TripDetails } from "@/types/Trip";
+import { TripSummary, TripRequest, TripDetails, TripNote } from "@/types/Trip";
 import { useAuth } from "@/app/ctx";
 import { API_TRIPS } from "@/constants/Endpoints";
 import { CategoryProfile, ConditionProfile } from "@/types/Profile";
@@ -189,4 +189,74 @@ export const useTripDetailsWithProfiles = (
     error: error || categoryError || conditionError,
     refetch,
   };
+};
+
+// Hook do pobierania notatek
+export const useTripNotes = (
+  tripId: string | null,
+  options: { immediate?: boolean } = { immediate: true },
+) => {
+  const { api } = useAuth();
+  const [notes, setNotes] = useState<TripNote | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchNotes = useCallback(async () => {
+    if (!tripId) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await api!.get<TripNote>(`/trips/${tripId}/notes`);
+      setNotes(response.data);
+    } catch (err: any) {
+      setError(
+        err?.response?.data?.message ||
+          "Wystąpił błąd podczas pobierania notatek.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [api, tripId]);
+
+  if (options.immediate && tripId && notes === null && !loading) {
+    fetchNotes();
+  }
+
+  return { notes, loading, error, refetch: fetchNotes };
+};
+
+// Hook do dodawania notatki
+export const useSaveTripNote = (tripId: string | null) => {
+  const { api } = useAuth();
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const saveNote = useCallback(
+    async (content: string) => {
+      if (!tripId) return null;
+
+      setLoading(true);
+      setError(null);
+
+      try {
+        const response = await api!.post<TripNote>(`/trips/${tripId}/notes`, {
+          content,
+        });
+        return response.data;
+      } catch (err: any) {
+        setError(
+          err?.response?.data?.message ||
+            "Wystąpił błąd podczas zapisywania notatki.",
+        );
+        return null;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [api, tripId],
+  );
+
+  return { saveNote, loading, error };
 };

@@ -74,3 +74,6 @@ export const COMPLETED_SURVEY_ICON = "file-check-outline";
 
 // Other
 export const NAVIGATION_ICON = "map-marker-distance";
+
+// Notes
+export const NOTE_ICON_MATERIAL = "note-edit";

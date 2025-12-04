@@ -13,13 +13,9 @@ import {
   CALENDAR_ICON,
   DELETE_ICON,
   EDIT_ICON_MATERIAL,
+  NOTE_ICON_MATERIAL,
 } from "@/constants/Icons";
-import {
-  router,
-  useFocusEffect,
-  useLocalSearchParams,
-  useNavigation,
-} from "expo-router";
+import { router, useLocalSearchParams, useNavigation } from "expo-router";
 import SingleDatePickerModal from "@/components/SingleDatePickerModal";
 import { CalendarDate } from "react-native-paper-dates/lib/typescript/Date/Calendar";
 import { useTripDetails } from "@/composables/useTripDetails";
@@ -205,6 +201,7 @@ const TripDetailsView = () => {
     budget: "Budżet wycieczki",
     categoryProfileName: "Profil preferencji",
     conditionProfileName: "Profil udogodnień",
+    notes: "Notatki",
   };
 
   const dateToIdMap = useMemo(() => {
@@ -234,6 +231,14 @@ const TripDetailsView = () => {
                 },
               },
             ),
+            {
+              title: "Zobacz notatkę",
+              icon: NOTE_ICON_MATERIAL,
+              color: theme.colors.onSurface,
+              onPress: () => {
+                router.push(`/trips/note/${trip_id}`);
+              },
+            },
             {
               title: "Usuń",
               icon: DELETE_ICON,
