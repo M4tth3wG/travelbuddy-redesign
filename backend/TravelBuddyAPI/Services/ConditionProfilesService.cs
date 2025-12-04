@@ -31,7 +31,7 @@ public class ConditionProfilesService(TravelBuddyDbContext dbContext) : IConditi
 
         try
         {
-            if (await _dbContext.ConditionProfiles.AnyAsync(cp => cp.Name == conditionProfile.Name))
+            if (await _dbContext.ConditionProfiles.AnyAsync(cp => cp.Name == conditionProfile.Name && cp.UserId == userId))
             {
                 throw new InvalidOperationException(ErrorMessage.ConditionProfileNameAlreadyExists);
             }

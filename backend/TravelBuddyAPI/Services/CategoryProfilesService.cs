@@ -29,7 +29,7 @@ public class CategoryProfilesService(TravelBuddyDbContext dbContext) : ICategory
 
         try
         {
-            if (await _dbContext.CategoryProfiles.AnyAsync(cp => cp.Name == categoryProfile.Name))
+            if (await _dbContext.CategoryProfiles.AnyAsync(cp => cp.Name == categoryProfile.Name && cp.UserId == userId))
             {
                 throw new InvalidOperationException(ErrorMessage.CategoryProfileNameAlreadyExists);
             }
