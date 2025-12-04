@@ -23,8 +23,6 @@ import Notification from "@/utils/notifications";
 import Calendar from "@/utils/calendar";
 import { pl, registerTranslation } from "react-native-paper-dates";
 
-registerTranslation("pl", pl);
-
 SplashScreen.preventAutoHideAsync();
 
 function RootLayout() {
@@ -35,6 +33,29 @@ function RootLayout() {
     Manrope_500Medium,
     Manrope_700Bold,
   });
+
+  useEffect(() => {
+    registerTranslation("pl", {
+      selectSingle: "Wybierz datę",
+      selectMultiple: "Wybierz daty",
+      selectRange: "Wybierz zakres",
+      save: "Zatwierdź",
+      close: "Anuluj",
+      notAccordingToDateFormat: (inputFormat) =>
+        `Data musi być w formacie ${inputFormat}`,
+      mustBeHigherThan: (date) => `Data musi być późniejsza niż ${date}`,
+      mustBeLowerThan: (date) => `Data musi być wcześniejsza niż ${date}`,
+      mustBeBetween: (startDate, endDate) =>
+        `Data musi być pomiędzy ${startDate} a ${endDate}`,
+      dateIsDisabled: "Ta data jest niedostępna",
+      previous: "Poprzedni",
+      next: "Następny",
+      typeInDate: "Wpisz datę",
+      pickDateFromCalendar: "Wybierz datę z kalendarza",
+      hour: "Godzina",
+      minute: "Minuta",
+    });
+  }, []);
 
   const appTheme = useMemo(() => {
     if (theme === "light") {
