@@ -47,6 +47,10 @@ export default function SignIn() {
     email: "",
     password: "",
   });
+  const [touched, setTouched] = useState({
+    email: false,
+    password: false,
+  });
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const animatedStyles = useAnimatedStyle(() => {
@@ -60,7 +64,14 @@ export default function SignIn() {
 
   const handleEmailChange = (email: string) => {
     setCredentials((prev) => ({ ...prev, email }));
-    setErrors((prev) => ({ ...prev, email: validateEmail(email) }));
+  };
+
+  const handleEmailBlur = () => {
+    setTouched((prev) => ({ ...prev, email: true }));
+    setErrors((prev) => ({
+      ...prev,
+      email: validateEmail(credentials.email),
+    }));
   };
 
   const handlePasswordChange = (password: string) => {
@@ -106,10 +117,13 @@ export default function SignIn() {
               <EmailTextInput
                 value={credentials.email}
                 onChangeText={handleEmailChange}
-                error={!!errors.email}
+                onBlur={handleEmailBlur}
+                error={touched.email && !!errors.email}
                 style={styles.inputText}
               />
-              <Text style={styles.textError}>{errors.email || " "}</Text>
+              <Text style={styles.textError}>
+                {touched.email ? errors.email : " "}
+              </Text>
               <View style={{ height: 10 }} />
               <PasswordTextInput
                 value={credentials.password}

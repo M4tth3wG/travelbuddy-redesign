@@ -5,6 +5,8 @@ import {
   Platform,
   GestureResponderEvent,
   StyleSheet,
+  NativeSyntheticEvent,
+  TextInputFocusEventData,
 } from "react-native";
 import { useState } from "react";
 
@@ -12,12 +14,14 @@ export function PasswordTextInput({
   style,
   value,
   onChangeText,
+  onBlur,
   error,
   placeholder,
 }: {
   style: StyleProp<TextStyle>;
   value: string | undefined;
   onChangeText: (((text: string) => void) & Function) | undefined;
+  onBlur?: (e: NativeSyntheticEvent<TextInputFocusEventData>) => void;
   error?: boolean | undefined;
   placeholder?: string;
 }) {
@@ -34,6 +38,7 @@ export function PasswordTextInput({
       style={style}
       value={value}
       onChangeText={onChangeText}
+      onBlur={onBlur}
       error={error || undefined}
       mode="outlined"
       placeholder={placeholder ?? "Hasło"}

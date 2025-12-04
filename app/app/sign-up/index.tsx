@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState } from "react";
 import {
   View,
@@ -6,6 +5,8 @@ import {
   SafeAreaView,
   TouchableWithoutFeedback,
   Keyboard,
+  NativeSyntheticEvent,
+  TextInputFocusEventData,
 } from "react-native";
 import { router, Link } from "expo-router";
 import { useTheme, Text, Button, Portal, Dialog } from "react-native-paper";
@@ -16,21 +17,14 @@ import Animated, {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { EmailTextInput } from "@/components/auth/EmailTextInput";
 import { PasswordTextInput } from "@/components/auth/PasswordTextInput";
-import {
-  validateEmail,
-  validatePassword,
-  validateNewPassword,
-} from "@/utils/validations";
+import { validateEmail, validateNewPassword } from "@/utils/validations";
 import { Credentials, AuthErrors } from "@/types/auth";
 import { MD3ThemeExtended } from "@/constants/Themes";
 import { useAuth } from "../ctx";
 import LoadingView from "@/views/LoadingView";
 import { CHECK_CIRCLE_ICON } from "@/constants/Icons";
 
-// It would be good if we could calculate this value dynamically, but I had some issues with that
 const BOTTOM_VIEW_HEIGHT = 54;
-
-// For future errors
 const signUpErrors: Record<string, string> = {};
 
 export default function SignUp() {
@@ -45,31 +39,57 @@ export default function SignUp() {
     email: "",
     password: "",
   });
+
   const [errors, setErrors] = useState<AuthErrors>({
     email: "",
     password: "",
   });
+
+  const [touched, setTouched] = useState<{ email: boolean; password: boolean }>(
+    {
+      email: false,
+      password: false,
+    },
+  );
+
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [showDialog, setShowDialog] = useState(false);
   const [showDialogUserExists, setShowDialogUserExists] = useState(false);
 
-  const animatedStyles = useAnimatedStyle(() => {
-    return {
-      marginBottom: Math.max(
-        keyboard.height.value - BOTTOM_VIEW_HEIGHT - insets.bottom,
-        0,
-      ),
-    };
-  });
+  const animatedStyles = useAnimatedStyle(() => ({
+    marginBottom: Math.max(
+      keyboard.height.value - BOTTOM_VIEW_HEIGHT - insets.bottom,
+      0,
+    ),
+  }));
 
+  // --- Handlers ---
   const handleEmailChange = (email: string) => {
     setCredentials((prev) => ({ ...prev, email }));
-    setErrors((prev) => ({ ...prev, email: validateEmail(email) }));
   };
 
   const handlePasswordChange = (password: string) => {
     setCredentials((prev) => ({ ...prev, password }));
-    setErrors((prev) => ({ ...prev, password: validatePassword(password) }));
+  };
+
+  const handleEmailBlur = (
+    _e: NativeSyntheticEvent<TextInputFocusEventData>,
+  ) => {
+    setTouched((prev) => ({ ...prev, email: true }));
+    setErrors((prev) => ({
+      ...prev,
+      email: validateEmail(credentials.email),
+    }));
+  };
+
+  const handlePasswordBlur = (
+    _e: NativeSyntheticEvent<TextInputFocusEventData>,
+  ) => {
+    setTouched((prev) => ({ ...prev, password: true }));
+    setErrors((prev) => ({
+      ...prev,
+      password: validateNewPassword(credentials.password),
+    }));
   };
 
   const handleDismissDialog = () => {
@@ -130,6 +150,7 @@ export default function SignUp() {
     }
   };
 
+  // --- Render ---
   return (
     <>
       <SafeAreaView style={styles.container}>
@@ -139,21 +160,31 @@ export default function SignUp() {
               <Text style={styles.headline} variant="headlineLarge">
                 Rejestracja
               </Text>
+
               <EmailTextInput
                 value={credentials.email}
                 onChangeText={handleEmailChange}
-                error={!!errors.email}
+                onBlur={handleEmailBlur}
+                error={touched.email && !!errors.email}
                 style={styles.inputText}
               />
-              <Text style={styles.textError}>{errors.email || " "}</Text>
+              <Text style={styles.textError}>
+                {touched.email ? errors.email : " "}
+              </Text>
+
               <View style={{ height: 10 }} />
+
               <PasswordTextInput
                 value={credentials.password}
                 onChangeText={handlePasswordChange}
-                error={!!errors.password}
+                onBlur={handlePasswordBlur}
+                error={touched.password && !!errors.password}
                 style={styles.inputText}
               />
-              <Text style={styles.textError}>{errors.password || " "}</Text>
+              <Text style={styles.textError}>
+                {touched.password ? errors.password : " "}
+              </Text>
+
               <Button
                 style={styles.button}
                 labelStyle={styles.buttonLabel}
@@ -164,12 +195,14 @@ export default function SignUp() {
                 Zarejestruj
               </Button>
             </Animated.View>
+
             <Text style={styles.signIn} variant="bodyLarge">
               Posiadasz już konto?{" "}
               <Link href="/sign-in" style={styles.textBold}>
                 Zaloguj się
               </Link>
             </Text>
+
             <Portal>
               <Dialog visible={showDialog} onDismiss={handleDismissDialog}>
                 <Dialog.Icon icon={CHECK_CIRCLE_ICON} />
@@ -185,6 +218,7 @@ export default function SignUp() {
                   <Button onPress={handleDismissDialog}>Dalej</Button>
                 </Dialog.Actions>
               </Dialog>
+
               <Dialog
                 visible={showDialogUserExists}
                 onDismiss={handleDismissDialogUserExists}
@@ -206,6 +240,7 @@ export default function SignUp() {
           </View>
         </TouchableWithoutFeedback>
       </SafeAreaView>
+
       <LoadingView show={isLoading} />
     </>
   );
@@ -213,14 +248,8 @@ export default function SignUp() {
 
 const makeStyles = (theme: MD3ThemeExtended) =>
   StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: theme.colors.surface,
-    },
-    innerContainer: {
-      flex: 1,
-      justifyContent: "flex-end",
-    },
+    container: { flex: 1, backgroundColor: theme.colors.surface },
+    innerContainer: { flex: 1, justifyContent: "flex-end" },
     headline: {
       fontFamily: "Manrope_700Bold",
       marginHorizontal: 40,
@@ -232,32 +261,12 @@ const makeStyles = (theme: MD3ThemeExtended) =>
       marginBottom: 30,
       marginTop: 90,
     },
-    buttonLabel: {
-      fontSize: 16,
-    },
-    buttonContent: {
-      paddingVertical: 0,
-    },
-    inputText: {
-      marginHorizontal: 40,
-      height: 56,
-      lineHeight: 20,
-    },
-    textBold: {
-      fontFamily: "Manrope_700Bold",
-    },
-    textError: {
-      marginHorizontal: 40,
-      color: theme.colors.error,
-    },
-    signIn: {
-      alignSelf: "center",
-      marginBottom: 30,
-    },
-    dialogTitle: {
-      textAlign: "center",
-    },
-    dialogContent: {
-      textAlign: "center",
-    },
+    buttonLabel: { fontSize: 16 },
+    buttonContent: { paddingVertical: 0 },
+    inputText: { marginHorizontal: 40, height: 56, lineHeight: 20 },
+    textBold: { fontFamily: "Manrope_700Bold" },
+    textError: { marginHorizontal: 40, color: theme.colors.error },
+    signIn: { alignSelf: "center", marginBottom: 30 },
+    dialogTitle: { textAlign: "center" },
+    dialogContent: { textAlign: "center" },
   });

@@ -5,6 +5,8 @@ import {
   SafeAreaView,
   TouchableWithoutFeedback,
   Keyboard,
+  NativeSyntheticEvent,
+  TextInputFocusEventData,
 } from "react-native";
 import { Link, router } from "expo-router";
 import { useTheme, Text, Button } from "react-native-paper";
@@ -30,6 +32,7 @@ export default function ForgotPasswordEmail() {
 
   const [email, setEmail] = useState<string>("");
   const [error, setError] = useState<string>("");
+  const [touched, setTouched] = useState<boolean>(false);
 
   const animatedStyles = useAnimatedStyle(() => {
     return {
@@ -42,7 +45,13 @@ export default function ForgotPasswordEmail() {
 
   const handleEmailChange = (value: string) => {
     setEmail(value);
-    setError(validateEmail(value));
+  };
+
+  const handleEmailBlur = (
+    _e: NativeSyntheticEvent<TextInputFocusEventData>,
+  ) => {
+    setTouched(true);
+    setError(validateEmail(email));
   };
 
   const validateForm = () => {
@@ -76,13 +85,17 @@ export default function ForgotPasswordEmail() {
             <Text style={styles.description} variant="bodyLarge">
               Wprowadź adres email, który został użyty przy rejestracji.
             </Text>
+
             <EmailTextInput
               value={email}
               onChangeText={handleEmailChange}
-              error={!!error}
+              onBlur={handleEmailBlur}
+              error={touched && !!error}
               style={styles.inputText}
             />
-            <Text style={styles.textError}>{error || " "}</Text>
+
+            <Text style={styles.textError}>{touched ? error : " "}</Text>
+
             <Button
               style={styles.button}
               labelStyle={styles.buttonLabel}
@@ -93,6 +106,7 @@ export default function ForgotPasswordEmail() {
               Kontynuuj
             </Button>
           </Animated.View>
+
           <Text style={styles.signIn} variant="bodyLarge">
             Wróć do{" "}
             <Link href="/sign-in" style={styles.textBold}>
