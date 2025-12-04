@@ -20,7 +20,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="explore"
         options={{
-          title: "Eksploruj",
+          title: "Atrakcje",
         }}
       />
       <Tabs.Screen

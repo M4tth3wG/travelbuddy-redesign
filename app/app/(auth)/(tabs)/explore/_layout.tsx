@@ -10,7 +10,7 @@ export default function StackLayout() {
         ),
       }}
     >
-      <Stack.Screen name="index" options={{ title: "Eksploruj" }} />
+      <Stack.Screen name="index" options={{ title: "Atrakcje" }} />
       <Stack.Screen
         name="place/[place_id]"
         options={{ title: "Szczegóły atrakcji" }}
