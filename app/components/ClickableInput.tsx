@@ -81,7 +81,6 @@ const createStyles = (theme: MD3ThemeExtended) =>
   StyleSheet.create({
     container: {
       width: "90%",
-      backgroundColor: theme.colors.surface,
     },
     textInput: { backgroundColor: theme.colors.surface },
     textInputDisabled: {

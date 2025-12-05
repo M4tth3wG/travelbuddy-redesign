@@ -1,4 +1,4 @@
-import { Dimensions, StyleSheet, Text, View } from "react-native";
+import { DimensionValue, StyleSheet, Text, View } from "react-native";
 import React from "react";
 import { Button, MD3Theme, useTheme } from "react-native-paper";
 import IconComponent from "./IconComponent";
@@ -14,19 +14,21 @@ interface TripPointCategoryPickerProps {
   selectedCategory: Category | undefined;
   onPress: () => void;
   disabled?: boolean;
+  containerWidth?: number;
 }
-
-const { width } = Dimensions.get("window");
 
 const TripPointTypePicker: React.FC<TripPointCategoryPickerProps> = ({
   selectedCategory,
   onPress,
   disabled = false,
+  containerWidth,
 }) => {
   const theme = useTheme();
-  const styles = createStyles(theme);
+  const styles = createStyles(theme, containerWidth ?? "100%");
+
   const iconName =
     CategoryIcons[selectedCategory?.name || DEFAULT_CATEGORY_NAME];
+
   return (
     <>
       <Text style={styles.header}>Rodzaj punktu wycieczki</Text>
@@ -46,6 +48,7 @@ const TripPointTypePicker: React.FC<TripPointCategoryPickerProps> = ({
             }
           </Text>
         </View>
+
         <Button
           mode="outlined"
           disabled={disabled}
@@ -61,10 +64,10 @@ const TripPointTypePicker: React.FC<TripPointCategoryPickerProps> = ({
 
 export default TripPointTypePicker;
 
-const createStyles = (theme: MD3Theme) =>
+const createStyles = (theme: MD3Theme, width: DimensionValue | undefined) =>
   StyleSheet.create({
     header: {
-      width: 0.85 * width,
+      width: "85%",
       marginTop: 15,
       color: theme.colors.onSurface,
     },
@@ -79,7 +82,7 @@ const createStyles = (theme: MD3Theme) =>
       flexDirection: "row",
       justifyContent: "space-between",
       alignItems: "center",
-      width: "90%",
+      width: width,
       marginVertical: 10,
       flexWrap: "wrap",
     },

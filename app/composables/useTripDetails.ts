@@ -6,6 +6,10 @@ import { API_TRIPS } from "@/constants/Endpoints";
 import { CategoryProfile, ConditionProfile } from "@/types/Profile";
 import { useGetProfile } from "./useProfiles";
 
+export interface UseApiOptions {
+  immediate?: boolean;
+}
+
 export const useTripDetails = (
   tripId: string | null,
   options: UseApiOptions = { immediate: true },
@@ -62,10 +66,6 @@ export const useTripDetails = (
 
   return { tripDetails, tripSummary, loading, error, refetch };
 };
-
-export interface UseApiOptions {
-  immediate?: boolean;
-}
 
 export const useEditTripDetails = (
   id: string,

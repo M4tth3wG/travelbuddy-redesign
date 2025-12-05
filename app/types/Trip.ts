@@ -75,7 +75,6 @@ export interface TripErrors {
   [key: string]: string | undefined;
 }
 
-
 export interface TripNote {
   id: string;
   content: string;

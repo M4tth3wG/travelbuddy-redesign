@@ -69,11 +69,11 @@ const styles = StyleSheet.create({
     marginVertical: 10,
   },
   touchable: {
-    width: width,
+    width: "100%",
     alignItems: "center",
   },
   input: {
-    width: "90%",
+    width: "100%",
   },
 });
 

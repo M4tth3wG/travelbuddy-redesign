@@ -9,8 +9,6 @@ import {
 import ClickableInput from "./ClickableInput";
 import { router } from "expo-router";
 
-const { width } = Dimensions.get("window");
-
 interface CurrencyValueInputProps {
   budget: number | undefined;
   currency: string;
@@ -90,19 +88,19 @@ const createStyles = (theme: MD3Theme) =>
     },
     budgetInput: {
       flex: 0.65,
-      marginLeft: 0.05 * width,
+      // marginLeft: 0.05 * width,
       backgroundColor: theme.colors.surface,
     },
     currencyTouchable: {
       flex: 0.3,
-      marginRight: 0.05 * width,
+      // marginRight: 0.05 * width,
     },
     currencyInput: {
       backgroundColor: theme.colors.surface,
     },
     currencyLabel: {
       flex: 0.3,
-      marginRight: 0.05 * width,
+      // marginRight: 0.05 * width,
       textAlign: "center",
       paddingVertical: 12,
       backgroundColor: theme.colors.surface,

@@ -149,4 +149,3 @@ const createStyles = (theme: MD3ThemeExtended) =>
   });
 
 export default SingleDatePickerModal;
-

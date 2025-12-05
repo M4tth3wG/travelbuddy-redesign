@@ -58,7 +58,7 @@ import { useShouldRefresh } from "@/context/ShouldRefreshContext";
 
 const { height, width } = Dimensions.get("window");
 
-const AddingTripPointView = () => {
+const AddingTripPointView2 = () => {
   const theme = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const router = useRouter();
@@ -392,224 +392,166 @@ const AddingTripPointView = () => {
       <GestureHandlerRootView>
         <ScrollView style={styles.scrollView}>
           <View style={styles.container}>
-            <TextInput
-              mode="outlined"
-              style={styles.textInput}
-              label="Nazwa"
-              value={tripPointName}
-              placeholder={tripPointName}
-              onChangeText={handleChange(setTripPointName, "tripPointName")}
-              onEndEditing={() =>
-                onEndEditingString(setTripPointName, tripPointName)
-              }
-              error={!!errors.tripPointName}
-            ></TextInput>
-            {errors.tripPointName && (
-              <Text style={styles.textError}>{errors.tripPointName}</Text>
-            )}
+            {/* --- INFORMACJE PODSTAWOWE --- */}
+            <Text style={styles.sectionTitle}>Informacje podstawowe</Text>
 
-            <TextInput
-              mode="outlined"
-              style={isAttraction ? styles.textInputDisabled : styles.textInput}
-              label="Państwo"
-              disabled={isAttraction}
-              value={
-                isAttraction
-                  ? country !== null
-                    ? country
-                    : "Brak"
-                  : country || ""
-              }
-              onChangeText={handleChange(setCountry, "country")}
-              onEndEditing={() => onEndEditingString(setCountry, country)}
-              error={!!errors.country}
-            ></TextInput>
-            {errors.country && (
-              <Text style={styles.textError}>{errors.country}</Text>
-            )}
+            <View style={styles.card}>
+              <TextInput
+                mode="outlined"
+                label="Nazwa punktu"
+                value={tripPointName}
+                placeholder="np. Zwiedzanie muzeum"
+                onChangeText={handleChange(setTripPointName, "tripPointName")}
+                onEndEditing={() =>
+                  onEndEditingString(setTripPointName, tripPointName)
+                }
+                error={!!errors.tripPointName}
+              />
+              {errors.tripPointName && (
+                <Text style={styles.textError}>{errors.tripPointName}</Text>
+              )}
 
-            <TextInput
-              mode="outlined"
-              style={isAttraction ? styles.textInputDisabled : styles.textInput}
-              label="Prowincja"
-              disabled={isAttraction}
-              value={
-                isAttraction ? (state !== null ? state : "Brak") : state || ""
-              }
-              onChangeText={handleChange(setState, "state")}
-              onEndEditing={() => onEndEditingString(setState, state)}
-              error={!!errors.state}
-            ></TextInput>
-            {errors.state && (
-              <Text style={styles.textError}>{errors.state}</Text>
-            )}
+              <TripPointTypePicker
+                onPress={() => setIsSheetVisible(true)}
+                selectedCategory={tripPointCategory}
+                disabled={isAttraction}
+              />
 
-            <TextInput
-              mode="outlined"
-              style={isAttraction ? styles.textInputDisabled : styles.textInput}
-              label="Miasto"
-              disabled={isAttraction}
-              value={
-                isAttraction ? (city !== null ? city : "Brak") : city || ""
-              }
-              onChangeText={handleChange(setCity, "city")}
-              onEndEditing={() => onEndEditingString(setCountry, city)}
-              error={!!errors.city}
-            ></TextInput>
-            {errors.city && <Text style={styles.textError}>{errors.city}</Text>}
+              <TextInput
+                mode="outlined"
+                label="Komentarz"
+                value={comment}
+                multiline
+                numberOfLines={4}
+                onChangeText={handleChange(setComment, "comment")}
+                onEndEditing={() => onEndEditingString(setComment, comment)}
+                error={!!errors.comment}
+                style={styles.multiline}
+              />
+              {errors.comment && (
+                <Text style={styles.textError}>{errors.comment}</Text>
+              )}
+            </View>
 
-            <TextInput
-              mode="outlined"
-              style={isAttraction ? styles.textInputDisabled : styles.textInput}
-              label="Ulica"
-              disabled={isAttraction}
-              value={
-                isAttraction
-                  ? street !== null
-                    ? street
-                    : "Brak"
-                  : street || ""
-              }
-              onChangeText={handleChange(setStreet, "street")}
-              onEndEditing={() => onEndEditingString(setStreet, street)}
-              error={!!errors.street}
-            ></TextInput>
-            {errors.street && (
-              <Text style={styles.textError}>{errors.street}</Text>
-            )}
+            <Text style={styles.sectionTitle}>Lokalizacja</Text>
 
-            <TextInput
-              mode="outlined"
-              style={isAttraction ? styles.textInputDisabled : styles.textInput}
-              label="Numer adresu"
-              disabled={isAttraction}
-              value={
-                isAttraction
-                  ? houseNumber !== null
-                    ? houseNumber
-                    : "Brak"
-                  : houseNumber || ""
-              }
-              onChangeText={handleChange(setHouseNumber, "houseName")}
-              onEndEditing={() =>
-                onEndEditingString(setHouseNumber, houseNumber)
-              }
-              error={!!errors.houseNumber}
-            ></TextInput>
-            {errors.houseNumber && (
-              <Text style={styles.textError}>{errors.houseNumber}</Text>
-            )}
+            <View style={styles.card}>
+              <TextInput
+                mode="outlined"
+                label="Państwo"
+                disabled={isAttraction}
+                value={country || ""}
+                onChangeText={handleChange(setCountry, "country")}
+                onEndEditing={() => onEndEditingString(setCountry, country)}
+                error={!!errors.country}
+              />
+              {errors.country && (
+                <Text style={styles.textError}>{errors.country}</Text>
+              )}
 
-            <TextInput
-              mode="outlined"
-              style={isAttraction ? styles.textInputDisabled : styles.textInput}
-              label="Szerokość geograficzna"
-              disabled={isAttraction}
-              value={
-                isAttraction
-                  ? latitudeText !== null
-                    ? latitudeText
-                    : "Brak"
-                  : latitudeText || ""
-              }
-              onChangeText={setLatitudeText}
-              onEndEditing={handleLatitudeChange}
-              keyboardType="numeric"
-              error={!!errors.latitude}
-            />
-            {errors.latitude && (
-              <Text style={styles.textError}>{errors.latitude}</Text>
-            )}
+              <TextInput
+                mode="outlined"
+                label="Prowincja"
+                disabled={isAttraction}
+                value={state || ""}
+                onChangeText={handleChange(setState, "state")}
+                onEndEditing={() => onEndEditingString(setState, state)}
+                error={!!errors.state}
+              />
+              {errors.state && (
+                <Text style={styles.textError}>{errors.state}</Text>
+              )}
 
-            <TextInput
-              mode="outlined"
-              style={isAttraction ? styles.textInputDisabled : styles.textInput}
-              label="Długość geograficzna"
-              disabled={isAttraction}
-              value={
-                isAttraction
-                  ? longitudeText !== null
-                    ? longitudeText
-                    : "Brak"
-                  : longitudeText || ""
-              }
-              onChangeText={setLongitudeText}
-              onEndEditing={handleLongitudeChange}
-              keyboardType="numeric"
-              error={!!errors.longitude}
-            />
-            {errors.longitude && (
-              <Text style={styles.textError}>{errors.longitude}</Text>
-            )}
+              <TextInput
+                mode="outlined"
+                label="Miasto"
+                disabled={isAttraction}
+                value={city || ""}
+                onChangeText={handleChange(setCity, "city")}
+                onEndEditing={() => onEndEditingString(setCity, city)}
+                error={!!errors.city}
+              />
+              {errors.city && (
+                <Text style={styles.textError}>{errors.city}</Text>
+              )}
 
-            <CurrencyValueInput
-              label={"Przewidywany koszt"}
-              budget={expectedCost}
-              currency={selectedCurrency}
-              currencyDisable={true}
-              error={!!errors.expectedCost}
-              handleBudgetChange={handleChange(setExpectedCost, "expectedCost")}
-            />
-            {errors.expectedCost && (
-              <Text style={styles.textError}>{errors.expectedCost}</Text>
-            )}
+              <TextInput
+                mode="outlined"
+                label="Ulica"
+                disabled={isAttraction}
+                value={street || ""}
+                onChangeText={handleChange(setStreet, "street")}
+                onEndEditing={() => onEndEditingString(setStreet, street)}
+                error={!!errors.street}
+              />
+              {errors.street && (
+                <Text style={styles.textError}>{errors.street}</Text>
+              )}
 
-            <SegmentedButtons
-              value={costType}
-              onValueChange={handleChange(setCostType, "costType")}
-              style={styles.segmentedButtons}
-              buttons={[
-                {
-                  value: "perPerson",
-                  label: "Na osobę",
-                },
-                {
-                  value: "total",
-                  label: "Łącznie",
-                },
-              ]}
-            />
+              <TextInput
+                mode="outlined"
+                label="Numer"
+                disabled={isAttraction}
+                value={houseNumber || ""}
+                onChangeText={handleChange(setHouseNumber, "houseNumber")}
+                onEndEditing={() =>
+                  onEndEditingString(setHouseNumber, houseNumber)
+                }
+                error={!!errors.houseNumber}
+              />
+              {errors.houseNumber && (
+                <Text style={styles.textError}>{errors.houseNumber}</Text>
+              )}
 
-            <TextInput
-              mode="outlined"
-              style={styles.textInput}
-              label="Komentarz"
-              value={comment}
-              placeholder={comment}
-              onChangeText={handleChange(setComment, "comment")}
-              onEndEditing={() => onEndEditingString(setComment, comment)}
-              error={!!errors.comment}
-            ></TextInput>
-            {errors.comment && (
-              <Text style={styles.textError}>{errors.comment}</Text>
-            )}
+              <TextInput
+                mode="outlined"
+                label="Szerokość geograficzna"
+                disabled={isAttraction}
+                value={latitudeText || ""}
+                onChangeText={setLatitudeText}
+                onEndEditing={handleLatitudeChange}
+                keyboardType="numeric"
+                error={!!errors.latitude}
+              />
+              {errors.latitude && (
+                <Text style={styles.textError}>{errors.latitude}</Text>
+              )}
 
-            <TripPointTypePicker
-              onPress={() => setIsSheetVisible(true)}
-              selectedCategory={tripPointCategory}
-              disabled={isAttraction}
-              containerWidth={0.9 * width}
-            />
+              <TextInput
+                mode="outlined"
+                label="Długość geograficzna"
+                disabled={isAttraction}
+                value={longitudeText || ""}
+                onChangeText={setLongitudeText}
+                onEndEditing={handleLongitudeChange}
+                keyboardType="numeric"
+                error={!!errors.longitude}
+              />
+              {errors.longitude && (
+                <Text style={styles.textError}>{errors.longitude}</Text>
+              )}
+            </View>
 
-            <TextInput
-              mode="outlined"
-              style={styles.textInput}
-              label="Data"
-              left={<TextInput.Icon icon={CALENDAR_ICON} />}
-              value={date as string}
-              editable={false}
-              disabled={true}
-            ></TextInput>
+            {/* --- CZAS --- */}
+            <Text style={styles.sectionTitle}>Czas</Text>
 
-            <View style={styles.timePickerWrapper}>
+            <View style={styles.card}>
+              <TextInput
+                mode="outlined"
+                label="Data"
+                value={date as string}
+                disabled
+                left={<TextInput.Icon icon={CALENDAR_ICON} />}
+              />
+
               <TimePicker
                 date={startTime}
                 showPicker={isStartDatePickerVisible}
                 setShowPicker={setIsStartDatePickerVisible}
                 onDateChange={handleChange(setStartTime, "startTime")}
                 label="Godzina rozpoczęcia"
-                error={!!errors.startTime || !!errors.endTime}
-              ></TimePicker>
+                error={!!errors.startTime}
+              />
               {errors.startTime && (
                 <Text style={styles.textError}>{errors.startTime}</Text>
               )}
@@ -620,32 +562,59 @@ const AddingTripPointView = () => {
                 setShowPicker={setIsEndDatePickerVisible}
                 onDateChange={handleChange(setEndTime, "endTime")}
                 label="Godzina zakończenia"
-                error={!!errors.startTime || !!errors.endTime}
-              ></TimePicker>
+                error={!!errors.endTime}
+              />
               {errors.endTime && (
                 <Text style={styles.textError}>{errors.endTime}</Text>
               )}
+            </View>
+
+            {/* --- KOSZTY --- */}
+            <Text style={styles.sectionTitle}>Koszty</Text>
+
+            <View style={styles.card}>
+              <CurrencyValueInput
+                label="Przewidywany koszt"
+                budget={expectedCost}
+                currency={selectedCurrency}
+                currencyDisable
+                error={!!errors.expectedCost}
+                handleBudgetChange={handleChange(
+                  setExpectedCost,
+                  "expectedCost",
+                )}
+              />
+              {errors.expectedCost && (
+                <Text style={styles.textError}>{errors.expectedCost}</Text>
+              )}
+
+              <SegmentedButtons
+                value={costType}
+                onValueChange={handleChange(setCostType, "costType")}
+                buttons={[
+                  { value: "perPerson", label: "Na osobę" },
+                  { value: "total", label: "Łącznie" },
+                ]}
+              />
             </View>
           </View>
 
           <ActionButtons
             onAction1={onCancel}
             action1ButtonLabel="Anuluj"
-            action1Icon={undefined}
             onAction2={onSave}
             action2ButtonLabel="Zapisz"
+            action1Icon={undefined}
             action2Icon={undefined}
           />
         </ScrollView>
 
         <SettingsBottomSheet
-          title={"Wybierz rodzaj punktu wycieczki"}
+          title="Wybierz rodzaj punktu"
           items={CategoryLabelsForProfiles}
           selectedItem={tripPointCategory?.name || DEFAULT_CATEGORY_NAME}
           isVisible={isSheetVisible && !isAttraction}
-          onSelect={(item: string) => {
-            handleChangeTripPointCategory(item);
-          }}
+          onSelect={(item) => handleChangeTripPointCategory(item)}
           onClose={() => setIsSheetVisible(false)}
         />
       </GestureHandlerRootView>
@@ -653,7 +622,7 @@ const AddingTripPointView = () => {
   );
 };
 
-export default AddingTripPointView;
+export default AddingTripPointView2;
 
 const createStyles = (theme: MD3Theme) =>
   StyleSheet.create({
@@ -662,12 +631,10 @@ const createStyles = (theme: MD3Theme) =>
       backgroundColor: theme.colors.surface,
       width: width,
     },
-    timePickerWrapper: {
-      width: "90%",
-    },
     container: {
       flex: 1,
       alignItems: "center",
+      paddingBottom: 20,
       backgroundColor: theme.colors.surface,
     },
     image: {
@@ -712,5 +679,31 @@ const createStyles = (theme: MD3Theme) =>
       width: 0.85 * width,
       textAlign: "left",
       ...theme.fonts.bodySmall,
+    },
+    sectionTitle: {
+      width: "90%",
+      marginTop: 20,
+      marginBottom: 8,
+      ...theme.fonts.titleMedium,
+      color: theme.colors.onSurface,
+    },
+
+    card: {
+      width: "90%",
+      backgroundColor: theme.colors.surfaceVariant,
+      padding: 16,
+      borderRadius: 12,
+      marginBottom: 16,
+      gap: 12,
+    },
+
+    multiline: {
+      height: 110,
+      textAlignVertical: "top",
+      paddingTop: 0, // górny padding
+      paddingLeft: 0, // lewy padding
+      paddingRight: 0, // prawy padding, opcjonalnie
+      paddingBottom: 0, // dolny padding, opcjonalnie
+      textAlign: "left",
     },
   });
