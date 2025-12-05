@@ -17,6 +17,8 @@ public class Trip
     [Required]
     public string? Name { get; set; }
 
+    public string? Note { get; set; }
+
     [Required]
     [Range(1, int.MaxValue, ErrorMessage = "Number of travelers must be 1 or more.")]
     public int NumberOfTravelers { get; set; }

@@ -42,6 +42,7 @@ public class TripsService(TravelBuddyDbContext dbContext, INBPService nbpService
                 Id = Guid.NewGuid(),
                 UserId = userId,
                 Name = trip!.Name, // It cannot be null here
+                Note = trip.Note,
                 NumberOfTravelers = trip.NumberOfTravelers,
                 StartDate = trip.StartDate,
                 EndDate = trip.EndDate,
@@ -205,6 +206,7 @@ public class TripsService(TravelBuddyDbContext dbContext, INBPService nbpService
             Guid destinationId = await AddDestinationAsync(trip.DestinationProviderId);
 
             existingTrip.Name = trip!.Name;
+            existingTrip.Note = trip.Note;
             existingTrip.NumberOfTravelers = trip.NumberOfTravelers;
             existingTrip.DestinationId = destinationId;
             existingTrip.CategoryProfileId = trip.CategoryProfileId;
@@ -327,6 +329,7 @@ public class TripsService(TravelBuddyDbContext dbContext, INBPService nbpService
         {
             Id = trip.Id,
             Name = trip.Name,
+            Note = trip.Note,
             NumberOfTravelers = trip.NumberOfTravelers,
             StartDate = trip.StartDate,
             EndDate = trip.EndDate,
@@ -371,7 +374,7 @@ public class TripsService(TravelBuddyDbContext dbContext, INBPService nbpService
                 td.TripPoints?.Select(tp => new TripPointStatistics(
                     tp.Name,
                     Math.Round(tp.PredictedCost / tp.ExchangeRate, 2),
-                    tp.Review != null && tp.Review.ActualCostPerPerson.HasValue && tp.Review.ExchangeRate.HasValue 
+                    tp.Review != null && tp.Review.ActualCostPerPerson.HasValue && tp.Review.ExchangeRate.HasValue
                         ? Math.Round(tp.Review.ActualCostPerPerson.Value * trip.NumberOfTravelers / tp.Review.ExchangeRate.Value, 2) : 0
                 )).ToList() ?? []
             )).ToList() ?? []
