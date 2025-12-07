@@ -76,7 +76,7 @@ export function convertTripResponseToViewModel(
     budget: getMoneyWithCurrency(tripDetails.budget, tripDetails.currencyCode),
     categoryProfileName: categoryProfile?.name || "Brak",
     conditionProfileName: conditionProfile?.name || "Brak",
-    notes: tripDetails.notes || "",
+    note: tripDetails.note || "",
   };
 }
 

@@ -201,7 +201,7 @@ const TripDetailsView = () => {
     budget: "Budżet wycieczki",
     categoryProfileName: "Profil preferencji",
     conditionProfileName: "Profil udogodnień",
-    notes: "Notatki",
+    note: "Notatki",
   };
 
   const dateToIdMap = useMemo(() => {

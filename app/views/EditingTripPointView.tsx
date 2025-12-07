@@ -560,18 +560,22 @@ const EditingTripPointView = () => {
             {errors.longitude && (
               <Text style={styles.textError}>{errors.longitude}</Text>
             )}
-
-            <CurrencyValueInput
-              label={"Przewidywany koszt"}
-              budget={expectedCost}
-              currency={selectedCurrency}
-              currencyDisable={true}
-              error={!!errors.expectedCost}
-              handleBudgetChange={handleChange(setExpectedCost, "expectedCost")}
-            />
-            {errors.expectedCost && (
-              <Text style={styles.textError}>{errors.expectedCost}</Text>
-            )}
+            <View style={styles.narrowerWrapper}>
+              <CurrencyValueInput
+                label={"Przewidywany koszt"}
+                budget={expectedCost}
+                currency={selectedCurrency}
+                currencyDisable={true}
+                error={!!errors.expectedCost}
+                handleBudgetChange={handleChange(
+                  setExpectedCost,
+                  "expectedCost",
+                )}
+              />
+              {errors.expectedCost && (
+                <Text style={styles.textError}>{errors.expectedCost}</Text>
+              )}
+            </View>
 
             <SegmentedButtons
               value={costType}
@@ -603,11 +607,13 @@ const EditingTripPointView = () => {
               <Text style={styles.textError}>{errors.comment}</Text>
             )}
 
-            <TripPointTypePicker
-              onPress={() => setIsSheetVisible(true)}
-              selectedCategory={tripPointCategory}
-              disabled={isAttraction}
-            />
+            <View style={styles.narrowerWrapper}>
+              <TripPointTypePicker
+                onPress={() => setIsSheetVisible(true)}
+                selectedCategory={tripPointCategory}
+                disabled={isAttraction}
+              />
+            </View>
 
             <TextInput
               mode="outlined"
@@ -620,29 +626,31 @@ const EditingTripPointView = () => {
               disabled={true}
             ></TextInput>
 
-            <TimePicker
-              date={startTime}
-              showPicker={isStartDatePickerVisible}
-              setShowPicker={setIsStartDatePickerVisible}
-              onDateChange={handleChange(setStartTime, "startTime")}
-              label="Godzina rozpoczęcia"
-              error={!!errors.startTime || !!errors.endTime}
-            ></TimePicker>
-            {errors.startTime && (
-              <Text style={styles.textError}>{errors.startTime}</Text>
-            )}
+            <View style={styles.narrowerWrapper}>
+              <TimePicker
+                date={startTime}
+                showPicker={isStartDatePickerVisible}
+                setShowPicker={setIsStartDatePickerVisible}
+                onDateChange={handleChange(setStartTime, "startTime")}
+                label="Godzina rozpoczęcia"
+                error={!!errors.startTime || !!errors.endTime}
+              ></TimePicker>
+              {errors.startTime && (
+                <Text style={styles.textError}>{errors.startTime}</Text>
+              )}
 
-            <TimePicker
-              date={endTime}
-              showPicker={isEndDatePickerVisible}
-              setShowPicker={setIsEndDatePickerVisible}
-              onDateChange={handleChange(setEndTime, "endTime")}
-              label="Godzina zakończenia"
-              error={!!errors.startTime || !!errors.endTime}
-            ></TimePicker>
-            {errors.endTime && (
-              <Text style={styles.textError}>{errors.endTime}</Text>
-            )}
+              <TimePicker
+                date={endTime}
+                showPicker={isEndDatePickerVisible}
+                setShowPicker={setIsEndDatePickerVisible}
+                onDateChange={handleChange(setEndTime, "endTime")}
+                label="Godzina zakończenia"
+                error={!!errors.startTime || !!errors.endTime}
+              ></TimePicker>
+              {errors.endTime && (
+                <Text style={styles.textError}>{errors.endTime}</Text>
+              )}
+            </View>
           </View>
 
           <ActionButtons
@@ -721,6 +729,9 @@ const createStyles = (theme: MD3Theme) =>
     segmentedButtons: {
       width: 0.9 * width,
       marginVertical: 10,
+    },
+    narrowerWrapper: {
+      width: "90%",
     },
     textError: {
       color: theme.colors.error,

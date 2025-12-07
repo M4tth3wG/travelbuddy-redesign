@@ -1,11 +1,11 @@
 // SnackbarContext.tsx
 
-import { BLACK, YELLOW } from "@/constants/Colors";
+import { BLACK, YELLOW, WHITE } from "@/constants/Colors";
 import React, { createContext, useContext, useState, ReactNode } from "react";
 import { Dimensions, StyleSheet, Text } from "react-native";
 import { MD3Theme, Snackbar, useTheme } from "react-native-paper";
 
-type SnackbarType = "success" | "warning" | "error";
+type SnackbarType = "success" | "warning" | "info" | "error";
 
 interface SnackbarContextType {
   showSnackbar: (message: string, type?: SnackbarType) => void;
@@ -86,6 +86,9 @@ const createStyles = (theme: MD3Theme) =>
     warning: {
       backgroundColor: YELLOW,
     },
+    info: {
+      backgroundColor: "#9E9E9E",
+    },
     error: {
       backgroundColor: theme.colors.errorContainer,
     },
@@ -97,5 +100,8 @@ const createStyles = (theme: MD3Theme) =>
     },
     errorText: {
       color: theme.colors.onErrorContainer,
+    },
+    infoText: {
+      color: WHITE,
     },
   });

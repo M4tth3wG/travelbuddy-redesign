@@ -7,6 +7,7 @@ using TravelBuddyAPI.DTOs.Currency;
 using TravelBuddyAPI.Interfaces;
 using System.Security.Claims;
 using TravelBuddyAPI.Services;
+using Microsoft.AspNetCore.Mvc;
 
 namespace TravelBuddyAPI.Endpoints;
 
@@ -54,6 +55,12 @@ public static class TripsEndpoints
 
         group.MapGet("/availableCurrencies", GetAvailableCurrenciesAsync)
             .WithName("GetAvailableCurrencies");
+            
+        group.MapGet("/{id}/note", GetNoteAsync)
+            .WithName("GetNote");
+            
+        group.MapPut("/{id}/note", EditNoteAsync)
+            .WithName("EditNote");
 
         return app;
     }
@@ -230,4 +237,55 @@ public static class TripsEndpoints
             return TypedResults.BadRequest($"{ITripsService.ErrorMessage.GetRecommendations} {ex.Message}");
         }
     }
+
+    private static async Task<Results<Ok<TripNoteDTO>, NotFound<string>>> GetNoteAsync(
+        Guid id, 
+        ITripsService tripsService, 
+        HttpContext httpContext)
+    {
+        try
+        {
+            var userId = httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier) 
+                        ?? throw new InvalidOperationException("User not found");
+            var noteContent = await tripsService.GetTripNoteAsync(userId, id);
+            return TypedResults.Ok(new TripNoteDTO { Content = noteContent });
+        }
+        catch (ArgumentException ex)
+        {
+            return TypedResults.NotFound(ex.Message);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return TypedResults.NotFound(ex.Message);
+        }
+    }
+
+
+    private static async Task<Results<Accepted<string>, NotFound<string>, BadRequest<string>>> EditNoteAsync(
+        Guid id,
+        [FromBody] TripNoteDTO noteDto,
+        ITripsService tripsService,
+        HttpContext httpContext)
+    {
+        try
+        {
+            var userId = httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier)
+                        ?? throw new InvalidOperationException("User not found");
+
+            bool updated = await tripsService.EditTripNoteAsync(userId, id, noteDto.Content);
+
+            return updated 
+                ? TypedResults.Accepted($"/trips/{id}/note", "Note updated successfully") 
+                : TypedResults.BadRequest("Failed to update note");
+        }
+        catch (ArgumentException ex) when (ex.Message.Contains(ITripsService.ErrorMessage.TripNotFound))
+        {
+            return TypedResults.NotFound(ex.Message);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return TypedResults.BadRequest(ex.Message);
+        }
+    }
+
 }

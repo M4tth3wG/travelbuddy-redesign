@@ -10,6 +10,7 @@ import {
 } from "react-native-paper";
 import {
   addHoursToTheSameDay,
+  convertTimestampToDateTime,
   formatTime,
   roundToNearestQuarterHour,
 } from "@/utils/TimeUtils";
@@ -22,18 +23,15 @@ import { TripErrors } from "@/types/Trip";
 import { CALENDAR_ICON } from "@/constants/Icons";
 import { useAnimatedKeyboard } from "react-native-reanimated";
 import TripPointTypePicker from "@/components/TripPointTypePicker";
-import {
-  TripPointRequest,
-  TripPointDetails,
-  Category,
-} from "@/types/TripDayData";
+import { Category, TripPointRequest } from "@/types/TripDayData";
 import { Place } from "@/types/Place";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import LoadingView from "./LoadingView";
 import { useSnackbar } from "@/context/SnackbarContext";
-import { useTripDetails } from "@/composables/useTripDetails";
-import usePlaceDetails from "@/composables/usePlace";
 import { useAuth } from "@/app/ctx";
+import { API_TRIP_POINT, PLACE_DETAILS_ENDPOINT } from "@/constants/Endpoints";
+import { useGetTripPoint } from "@/composables/useTripPoint";
+import { useTripDetails } from "@/composables/useTripDetails";
 import {
   CATEGORY_NAME_LIST,
   CategoryLabelsForProfiles,
@@ -41,39 +39,39 @@ import {
 } from "@/types/Profile";
 import { useGetCategories } from "@/composables/useCategoryCondition";
 import {
-  API_TRIP_POINT,
-  ATTRACTION_DETAILS_ENDPOINT,
-  PLACE_DETAILS_ENDPOINT,
-} from "@/constants/Endpoints";
-import {
   NEW_OVERLAPPING_ERROR_MESSAGE,
   OVERLAPPING_TRIP_POINTS_MESSAGE,
 } from "@/constants/Messages";
 import {
-  requiredFieldsForTripPoint,
   onEndEditingString,
+  requiredFieldsForTripPoint,
 } from "@/utils/validations";
+import usePlaceDetails from "@/composables/usePlace";
 import { findAttractionCategory } from "@/utils/CategoryUtils";
 import { useShouldRefresh } from "@/context/ShouldRefreshContext";
 
 const { height, width } = Dimensions.get("window");
 
-const AddingTripPointView = () => {
+const EditingTripPointView2 = () => {
   const theme = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const router = useRouter();
   const { showSnackbar } = useSnackbar();
 
-  const { trip_id, day_id, date, attractionProviderId } =
-    useLocalSearchParams();
+  const params = useLocalSearchParams();
+  const { trip_id, day_id, trip_point_id } = params;
 
-  useEffect(() => {
-    console.log(attractionProviderId);
-  }, [attractionProviderId]);
+  const { date } = useLocalSearchParams();
 
   useAnimatedKeyboard();
 
   const { api } = useAuth();
+
+  const {
+    tripPointDetails,
+    loading: tripPointLoading,
+    error: tripPointError,
+  } = useGetTripPoint(trip_point_id as string);
 
   const {
     tripDetails,
@@ -81,16 +79,15 @@ const AddingTripPointView = () => {
     error: tripError,
   } = useTripDetails(trip_id as string);
 
+  const [placeId, setPlaceId] = useState<string | undefined>(undefined);
+
   const {
-    placeDetails: destinationDetails,
-    loading: destinationLoading,
-    error: destinationError,
-  } = usePlaceDetails(
-    attractionProviderId
-      ? (attractionProviderId as string)
-      : tripDetails?.destinationId,
-    attractionProviderId ? ATTRACTION_DETAILS_ENDPOINT : PLACE_DETAILS_ENDPOINT,
-  );
+    placeDetails,
+    loading: placeLoading,
+    error: placeError,
+    success,
+    refetch: fetchPlaceDetails,
+  } = usePlaceDetails(placeId, PLACE_DETAILS_ENDPOINT, { immediate: false });
 
   const {
     items: categories,
@@ -98,9 +95,7 @@ const AddingTripPointView = () => {
     error: categoriesError,
   } = useGetCategories();
 
-  const [tripPointName, setTripPointName] = useState<string>("");
-
-  const { addRefreshScreen } = useShouldRefresh();
+  const [tripPointName, setTripPointName] = useState("");
 
   const [errors, setErrors] = useState<TripErrors>({});
   const [loading, setLoading] = useState<boolean>(false);
@@ -108,11 +103,13 @@ const AddingTripPointView = () => {
 
   const [expectedCost, setExpectedCost] = useState<number>(0);
   const [costType, setCostType] = useState<string>("perPerson");
-  const selectedCurrency = tripDetails ? tripDetails.currencyCode : "EUR";
+  const selectedCurrency = tripPointDetails
+    ? tripPointDetails.currencyCode
+    : "EUR";
   const [comment, setComment] = useState<string>("");
   const [tripPointCategory, setTripPointCategory] = useState<
     Category | undefined
-  >(undefined);
+  >();
   const [startTime, setStartTime] = useState<Date>(roundToNearestQuarterHour());
   const [endTime, setEndTime] = useState<Date>(
     addHoursToTheSameDay(startTime, 1),
@@ -136,6 +133,23 @@ const AddingTripPointView = () => {
 
   const [filteredCategories, setFilteredCategories] = useState<Category[]>([]);
 
+  const { addRefreshScreen } = useShouldRefresh();
+
+  useEffect(() => {
+    if (tripPointDetails?.place?.id) {
+      setPlaceId(tripPointDetails?.place?.id);
+    }
+  }, [tripPointDetails]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      if (placeId) {
+        await fetchPlaceDetails();
+      }
+    };
+    fetchData();
+  }, [placeId]);
+
   const handleChange = (
     setter: React.Dispatch<React.SetStateAction<any>>,
     field: keyof TripErrors = "",
@@ -149,59 +163,64 @@ const AddingTripPointView = () => {
 
   useEffect(() => {
     setFilteredCategories(
-      categories.filter((category: Category) =>
+      categories.filter((category) =>
         CATEGORY_NAME_LIST.includes(category.name),
       ),
     );
-    if (!attractionProviderId)
-      setTripPointCategory(getCategoryByName(DEFAULT_CATEGORY_NAME));
+    setTripPointCategory(getCategoryByName(DEFAULT_CATEGORY_NAME));
   }, [categories]);
 
   useEffect(() => {
-    console.log(JSON.stringify(destinationDetails));
-    if (destinationDetails) {
-      setCountry(destinationDetails.country);
-      setState(destinationDetails.state || "");
-      setCity(destinationDetails.city);
-      if (attractionProviderId) {
-        setTripPointName(destinationDetails.name);
-        setStreet(destinationDetails.street || "");
-        setHouseNumber(destinationDetails.houseNumber || "");
-        setLatitude(destinationDetails.latitude || null);
-        setLongitude(destinationDetails.longitude || null);
-        setLatitudeText(
-          destinationDetails.latitude
-            ? destinationDetails.latitude.toString()
-            : null,
-        );
-        setLongitudeText(
-          destinationDetails.longitude
-            ? destinationDetails.longitude.toString()
-            : null,
-        );
-        setTripPointCategory(
+    if (tripPointDetails) {
+      setTripPointName(tripPointDetails.name);
+      setCountry(tripPointDetails.place?.country || null);
+      setState(tripPointDetails.place?.state || null);
+      setCity(tripPointDetails.place?.city || null);
+      setStreet(tripPointDetails.place?.street || null);
+      setHouseNumber(tripPointDetails.place?.houseNumber || null);
+      setComment(tripPointDetails.comment || "");
+      setTripPointCategory(
+        tripPointDetails?.place?.superCategory ||
           getCategoryByName(
-            destinationDetails.superCategory?.name ??
-              findAttractionCategory(destinationDetails),
+            placeDetails
+              ? findAttractionCategory(placeDetails)
+              : DEFAULT_CATEGORY_NAME,
           ),
-        );
-      } else {
-        setTripPointCategory(getCategoryByName(DEFAULT_CATEGORY_NAME));
-      }
-      setIsAttraction(!!attractionProviderId);
+      );
+      setStartTime(convertTimestampToDateTime(tripPointDetails.startTime));
+      setEndTime(convertTimestampToDateTime(tripPointDetails.endTime));
+      setExpectedCost(tripPointDetails.predictedCost || 0);
     }
-  }, [destinationDetails]);
+    if (placeDetails && success) {
+      setLatitude(placeDetails.latitude || null);
+      setLongitude(placeDetails.longitude || null);
+      setLatitudeText(
+        placeDetails.latitude ? placeDetails.latitude.toString() : null,
+      );
+      setLongitudeText(
+        placeDetails.longitude ? placeDetails.longitude.toString() : null,
+      );
+    }
+    setIsAttraction(isAttraction || !!tripPointDetails?.place?.providerId);
+  }, [tripPointDetails, placeDetails, success]);
 
   useEffect(() => {
     setErrors((prev) => ({
       ...prev,
-      ["api"]: tripError || destinationError || categoriesError || "",
+      ["api"]:
+        tripError || tripPointError || categoriesError || placeError || "",
     }));
-  }, [tripError, destinationError, categoriesError]);
+  }, [tripError, tripPointError, categoriesError, placeError]);
 
   useEffect(() => {
-    setLoading(tripLoading || destinationLoading || categoriesLoading || false);
-  }, [tripLoading, destinationLoading, categoriesLoading]);
+    setLoading(
+      tripLoading ||
+        tripPointLoading ||
+        categoriesLoading ||
+        placeLoading ||
+        false,
+    );
+  }, [tripLoading, tripPointLoading, categoriesLoading, placeLoading]);
 
   useEffect(() => {
     if (errors.api) {
@@ -253,21 +272,21 @@ const AddingTripPointView = () => {
     return errorData;
   };
 
-  const handleCreateRequest = async (tripPointRequest: TripPointRequest) => {
+  const handleEditRequest = async (editTripPointRequest: TripPointRequest) => {
     try {
       setLoading(true);
-      const response = await api!.post<TripPointDetails>(
-        API_TRIP_POINT,
-        tripPointRequest,
+
+      const response = await api!.put(
+        `${API_TRIP_POINT}/${tripPointDetails?.id}`,
+        editTripPointRequest,
       );
 
       if (!response) {
-        showSnackbar("Nie udało się dodać punktu wycieczki.");
+        showSnackbar("Nie udało się edytować punktu wycieczki.");
         return;
       }
 
       showSnackbar("Punkt wycieczki zapisany!");
-      console.log(attractionProviderId);
       addRefreshScreen("trip-day");
       router.back();
     } catch (err: any) {
@@ -280,7 +299,8 @@ const AddingTripPointView = () => {
         ["api"]: err.response.data,
       }));
       showSnackbar(
-        "Nie dodano punktu wycieczki. " + handleErrorMessage(err.response.data),
+        "Nie edytowano punktu wycieczki. " +
+          handleErrorMessage(err.response.data),
       );
     } finally {
       setLoading(false);
@@ -289,7 +309,7 @@ const AddingTripPointView = () => {
 
   const getCategoryByName = (categoryName: string): Category | undefined => {
     return filteredCategories.find(
-      (category: Category) => category.name === categoryName,
+      (category) => category.name === categoryName,
     );
   };
 
@@ -309,8 +329,7 @@ const AddingTripPointView = () => {
     const hasErrors = validateForm();
     if (!hasErrors) {
       const placeToRequest: Place = {
-        name: destinationDetails?.name,
-        providerId: attractionProviderId as string,
+        name: placeDetails?.name ?? tripPointName,
         superCategoryId: tripPointCategory?.id,
         country: country,
         state: state,
@@ -332,16 +351,16 @@ const AddingTripPointView = () => {
       const tripPointRequest: TripPointRequest = {
         name: tripPointName,
         comment: comment,
-        tripDayId: day_id as string,
+        tripDayId: tripPointDetails?.tripDayId || (day_id as string),
         place: placeToRequest,
         startTime: `${formatTime(startTime, true)}`,
         endTime: `${formatTime(endTime, true)}`,
         predictedCost: totalExpectedCost,
       };
 
-      handleCreateRequest(tripPointRequest);
+      handleEditRequest(tripPointRequest);
     } else {
-      showSnackbar("Uzupełnij brakujące pola i popraw błędy!", "error");
+      showSnackbar("Uzupełnij brakujące pola i popraw błędy!");
     }
   };
 
@@ -392,229 +411,166 @@ const AddingTripPointView = () => {
       <GestureHandlerRootView>
         <ScrollView style={styles.scrollView}>
           <View style={styles.container}>
-            <TextInput
-              mode="outlined"
-              style={styles.textInput}
-              label="Nazwa"
-              value={tripPointName}
-              placeholder={tripPointName}
-              onChangeText={handleChange(setTripPointName, "tripPointName")}
-              onEndEditing={() =>
-                onEndEditingString(setTripPointName, tripPointName)
-              }
-              error={!!errors.tripPointName}
-            ></TextInput>
-            {errors.tripPointName && (
-              <Text style={styles.textError}>{errors.tripPointName}</Text>
-            )}
+            {/* --- INFORMACJE PODSTAWOWE --- */}
+            <Text style={styles.sectionTitle}>Informacje podstawowe</Text>
 
-            <TextInput
-              mode="outlined"
-              style={isAttraction ? styles.textInputDisabled : styles.textInput}
-              label="Państwo"
-              disabled={isAttraction}
-              value={
-                isAttraction
-                  ? country !== null
-                    ? country
-                    : "Brak"
-                  : country || ""
-              }
-              onChangeText={handleChange(setCountry, "country")}
-              onEndEditing={() => onEndEditingString(setCountry, country)}
-              error={!!errors.country}
-            ></TextInput>
-            {errors.country && (
-              <Text style={styles.textError}>{errors.country}</Text>
-            )}
-
-            <TextInput
-              mode="outlined"
-              style={isAttraction ? styles.textInputDisabled : styles.textInput}
-              label="Prowincja"
-              disabled={isAttraction}
-              value={
-                isAttraction ? (state !== null ? state : "Brak") : state || ""
-              }
-              onChangeText={handleChange(setState, "state")}
-              onEndEditing={() => onEndEditingString(setState, state)}
-              error={!!errors.state}
-            ></TextInput>
-            {errors.state && (
-              <Text style={styles.textError}>{errors.state}</Text>
-            )}
-
-            <TextInput
-              mode="outlined"
-              style={isAttraction ? styles.textInputDisabled : styles.textInput}
-              label="Miasto"
-              disabled={isAttraction}
-              value={
-                isAttraction ? (city !== null ? city : "Brak") : city || ""
-              }
-              onChangeText={handleChange(setCity, "city")}
-              onEndEditing={() => onEndEditingString(setCountry, city)}
-              error={!!errors.city}
-            ></TextInput>
-            {errors.city && <Text style={styles.textError}>{errors.city}</Text>}
-
-            <TextInput
-              mode="outlined"
-              style={isAttraction ? styles.textInputDisabled : styles.textInput}
-              label="Ulica"
-              disabled={isAttraction}
-              value={
-                isAttraction
-                  ? street !== null
-                    ? street
-                    : "Brak"
-                  : street || ""
-              }
-              onChangeText={handleChange(setStreet, "street")}
-              onEndEditing={() => onEndEditingString(setStreet, street)}
-              error={!!errors.street}
-            ></TextInput>
-            {errors.street && (
-              <Text style={styles.textError}>{errors.street}</Text>
-            )}
-
-            <TextInput
-              mode="outlined"
-              style={isAttraction ? styles.textInputDisabled : styles.textInput}
-              label="Numer adresu"
-              disabled={isAttraction}
-              value={
-                isAttraction
-                  ? houseNumber !== null
-                    ? houseNumber
-                    : "Brak"
-                  : houseNumber || ""
-              }
-              onChangeText={handleChange(setHouseNumber, "houseName")}
-              onEndEditing={() =>
-                onEndEditingString(setHouseNumber, houseNumber)
-              }
-              error={!!errors.houseNumber}
-            ></TextInput>
-            {errors.houseNumber && (
-              <Text style={styles.textError}>{errors.houseNumber}</Text>
-            )}
-
-            <TextInput
-              mode="outlined"
-              style={isAttraction ? styles.textInputDisabled : styles.textInput}
-              label="Szerokość geograficzna"
-              disabled={isAttraction}
-              value={
-                isAttraction
-                  ? latitudeText !== null
-                    ? latitudeText
-                    : "Brak"
-                  : latitudeText || ""
-              }
-              onChangeText={setLatitudeText}
-              onEndEditing={handleLatitudeChange}
-              keyboardType="numeric"
-              error={!!errors.latitude}
-            />
-            {errors.latitude && (
-              <Text style={styles.textError}>{errors.latitude}</Text>
-            )}
-
-            <TextInput
-              mode="outlined"
-              style={isAttraction ? styles.textInputDisabled : styles.textInput}
-              label="Długość geograficzna"
-              disabled={isAttraction}
-              value={
-                isAttraction
-                  ? longitudeText !== null
-                    ? longitudeText
-                    : "Brak"
-                  : longitudeText || ""
-              }
-              onChangeText={setLongitudeText}
-              onEndEditing={handleLongitudeChange}
-              keyboardType="numeric"
-              error={!!errors.longitude}
-            />
-            {errors.longitude && (
-              <Text style={styles.textError}>{errors.longitude}</Text>
-            )}
-
-            <View style={styles.narrowerWrapper}>
-              <CurrencyValueInput
-                label={"Przewidywany koszt"}
-                budget={expectedCost}
-                currency={selectedCurrency}
-                currencyDisable={true}
-                error={!!errors.expectedCost}
-                handleBudgetChange={handleChange(
-                  setExpectedCost,
-                  "expectedCost",
-                )}
+            <View style={styles.card}>
+              <TextInput
+                mode="outlined"
+                label="Nazwa punktu"
+                value={tripPointName}
+                placeholder="np. Zwiedzanie muzeum"
+                onChangeText={handleChange(setTripPointName, "tripPointName")}
+                onEndEditing={() =>
+                  onEndEditingString(setTripPointName, tripPointName)
+                }
+                error={!!errors.tripPointName}
               />
-              {errors.expectedCost && (
-                <Text style={styles.textError}>{errors.expectedCost}</Text>
+              {errors.tripPointName && (
+                <Text style={styles.textError}>{errors.tripPointName}</Text>
+              )}
+
+              <TripPointTypePicker
+                onPress={() => setIsSheetVisible(true)}
+                selectedCategory={tripPointCategory}
+                disabled={isAttraction}
+              />
+
+              <TextInput
+                mode="outlined"
+                label="Komentarz"
+                value={comment}
+                multiline
+                numberOfLines={4}
+                onChangeText={handleChange(setComment, "comment")}
+                onEndEditing={() => onEndEditingString(setComment, comment)}
+                error={!!errors.comment}
+                style={styles.multiline}
+              />
+              {errors.comment && (
+                <Text style={styles.textError}>{errors.comment}</Text>
               )}
             </View>
 
-            <SegmentedButtons
-              value={costType}
-              onValueChange={handleChange(setCostType, "costType")}
-              style={styles.segmentedButtons}
-              buttons={[
-                {
-                  value: "perPerson",
-                  label: "Na osobę",
-                },
-                {
-                  value: "total",
-                  label: "Łącznie",
-                },
-              ]}
-            />
+            <Text style={styles.sectionTitle}>Lokalizacja</Text>
 
-            <TextInput
-              mode="outlined"
-              style={styles.textInput}
-              label="Komentarz"
-              value={comment}
-              placeholder={comment}
-              onChangeText={handleChange(setComment, "comment")}
-              onEndEditing={() => onEndEditingString(setComment, comment)}
-              error={!!errors.comment}
-            ></TextInput>
-            {errors.comment && (
-              <Text style={styles.textError}>{errors.comment}</Text>
-            )}
+            <View style={styles.card}>
+              <TextInput
+                mode="outlined"
+                label="Państwo"
+                disabled={isAttraction}
+                value={country || ""}
+                onChangeText={handleChange(setCountry, "country")}
+                onEndEditing={() => onEndEditingString(setCountry, country)}
+                error={!!errors.country}
+              />
+              {errors.country && (
+                <Text style={styles.textError}>{errors.country}</Text>
+              )}
 
-            <TripPointTypePicker
-              onPress={() => setIsSheetVisible(true)}
-              selectedCategory={tripPointCategory}
-              disabled={isAttraction}
-              containerWidth={0.9 * width}
-            />
+              <TextInput
+                mode="outlined"
+                label="Prowincja"
+                disabled={isAttraction}
+                value={state || ""}
+                onChangeText={handleChange(setState, "state")}
+                onEndEditing={() => onEndEditingString(setState, state)}
+                error={!!errors.state}
+              />
+              {errors.state && (
+                <Text style={styles.textError}>{errors.state}</Text>
+              )}
 
-            <TextInput
-              mode="outlined"
-              style={styles.textInput}
-              label="Data"
-              left={<TextInput.Icon icon={CALENDAR_ICON} />}
-              value={date as string}
-              editable={false}
-              disabled={true}
-            ></TextInput>
+              <TextInput
+                mode="outlined"
+                label="Miasto"
+                disabled={isAttraction}
+                value={city || ""}
+                onChangeText={handleChange(setCity, "city")}
+                onEndEditing={() => onEndEditingString(setCity, city)}
+                error={!!errors.city}
+              />
+              {errors.city && (
+                <Text style={styles.textError}>{errors.city}</Text>
+              )}
 
-            <View style={styles.narrowerWrapper}>
+              <TextInput
+                mode="outlined"
+                label="Ulica"
+                disabled={isAttraction}
+                value={street || ""}
+                onChangeText={handleChange(setStreet, "street")}
+                onEndEditing={() => onEndEditingString(setStreet, street)}
+                error={!!errors.street}
+              />
+              {errors.street && (
+                <Text style={styles.textError}>{errors.street}</Text>
+              )}
+
+              <TextInput
+                mode="outlined"
+                label="Numer"
+                disabled={isAttraction}
+                value={houseNumber || ""}
+                onChangeText={handleChange(setHouseNumber, "houseNumber")}
+                onEndEditing={() =>
+                  onEndEditingString(setHouseNumber, houseNumber)
+                }
+                error={!!errors.houseNumber}
+              />
+              {errors.houseNumber && (
+                <Text style={styles.textError}>{errors.houseNumber}</Text>
+              )}
+
+              <TextInput
+                mode="outlined"
+                label="Szerokość geograficzna"
+                disabled={isAttraction}
+                value={latitudeText || ""}
+                onChangeText={setLatitudeText}
+                onEndEditing={handleLatitudeChange}
+                keyboardType="numeric"
+                error={!!errors.latitude}
+              />
+              {errors.latitude && (
+                <Text style={styles.textError}>{errors.latitude}</Text>
+              )}
+
+              <TextInput
+                mode="outlined"
+                label="Długość geograficzna"
+                disabled={isAttraction}
+                value={longitudeText || ""}
+                onChangeText={setLongitudeText}
+                onEndEditing={handleLongitudeChange}
+                keyboardType="numeric"
+                error={!!errors.longitude}
+              />
+              {errors.longitude && (
+                <Text style={styles.textError}>{errors.longitude}</Text>
+              )}
+            </View>
+
+            {/* --- CZAS --- */}
+            <Text style={styles.sectionTitle}>Czas</Text>
+
+            <View style={styles.card}>
+              <TextInput
+                mode="outlined"
+                label="Data"
+                value={date as string}
+                disabled
+                left={<TextInput.Icon icon={CALENDAR_ICON} />}
+              />
+
               <TimePicker
                 date={startTime}
                 showPicker={isStartDatePickerVisible}
                 setShowPicker={setIsStartDatePickerVisible}
                 onDateChange={handleChange(setStartTime, "startTime")}
                 label="Godzina rozpoczęcia"
-                error={!!errors.startTime || !!errors.endTime}
-              ></TimePicker>
+                error={!!errors.startTime}
+              />
               {errors.startTime && (
                 <Text style={styles.textError}>{errors.startTime}</Text>
               )}
@@ -625,32 +581,59 @@ const AddingTripPointView = () => {
                 setShowPicker={setIsEndDatePickerVisible}
                 onDateChange={handleChange(setEndTime, "endTime")}
                 label="Godzina zakończenia"
-                error={!!errors.startTime || !!errors.endTime}
-              ></TimePicker>
+                error={!!errors.endTime}
+              />
               {errors.endTime && (
                 <Text style={styles.textError}>{errors.endTime}</Text>
               )}
+            </View>
+
+            {/* --- KOSZTY --- */}
+            <Text style={styles.sectionTitle}>Koszty</Text>
+
+            <View style={styles.card}>
+              <CurrencyValueInput
+                label="Przewidywany koszt"
+                budget={expectedCost}
+                currency={selectedCurrency}
+                currencyDisable
+                error={!!errors.expectedCost}
+                handleBudgetChange={handleChange(
+                  setExpectedCost,
+                  "expectedCost",
+                )}
+              />
+              {errors.expectedCost && (
+                <Text style={styles.textError}>{errors.expectedCost}</Text>
+              )}
+
+              <SegmentedButtons
+                value={costType}
+                onValueChange={handleChange(setCostType, "costType")}
+                buttons={[
+                  { value: "perPerson", label: "Na osobę" },
+                  { value: "total", label: "Łącznie" },
+                ]}
+              />
             </View>
           </View>
 
           <ActionButtons
             onAction1={onCancel}
             action1ButtonLabel="Anuluj"
-            action1Icon={undefined}
             onAction2={onSave}
             action2ButtonLabel="Zapisz"
+            action1Icon={undefined}
             action2Icon={undefined}
           />
         </ScrollView>
 
         <SettingsBottomSheet
-          title={"Wybierz rodzaj punktu wycieczki"}
+          title="Wybierz rodzaj punktu"
           items={CategoryLabelsForProfiles}
           selectedItem={tripPointCategory?.name || DEFAULT_CATEGORY_NAME}
           isVisible={isSheetVisible && !isAttraction}
-          onSelect={(item: string) => {
-            handleChangeTripPointCategory(item);
-          }}
+          onSelect={(item) => handleChangeTripPointCategory(item)}
           onClose={() => setIsSheetVisible(false)}
         />
       </GestureHandlerRootView>
@@ -658,7 +641,7 @@ const AddingTripPointView = () => {
   );
 };
 
-export default AddingTripPointView;
+export default EditingTripPointView2;
 
 const createStyles = (theme: MD3Theme) =>
   StyleSheet.create({
@@ -667,12 +650,10 @@ const createStyles = (theme: MD3Theme) =>
       backgroundColor: theme.colors.surface,
       width: width,
     },
-    narrowerWrapper: {
-      width: "90%",
-    },
     container: {
       flex: 1,
       alignItems: "center",
+      paddingBottom: 20,
       backgroundColor: theme.colors.surface,
     },
     image: {
@@ -717,5 +698,31 @@ const createStyles = (theme: MD3Theme) =>
       width: 0.85 * width,
       textAlign: "left",
       ...theme.fonts.bodySmall,
+    },
+    sectionTitle: {
+      width: "90%",
+      marginTop: 20,
+      marginBottom: 8,
+      ...theme.fonts.titleMedium,
+      color: theme.colors.onSurface,
+    },
+
+    card: {
+      width: "90%",
+      backgroundColor: theme.colors.surfaceVariant,
+      padding: 16,
+      borderRadius: 12,
+      marginBottom: 16,
+      gap: 12,
+    },
+
+    multiline: {
+      height: 110,
+      textAlignVertical: "top",
+      paddingTop: 0, // górny padding
+      paddingLeft: 0, // lewy padding
+      paddingRight: 0, // prawy padding, opcjonalnie
+      paddingBottom: 0, // dolny padding, opcjonalnie
+      textAlign: "left",
     },
   });

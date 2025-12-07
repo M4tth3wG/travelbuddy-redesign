@@ -121,4 +121,21 @@ public interface ITripsService
     /// <param name="limit">The optional limit on the number of places to retrieve.</param>
     /// <returns>A list of place recommendations.</returns>
     Task<List<PlaceOverviewDTO>> GetPlaceRecommendationsAsync(string userId, Guid tripId, double radius, int? limit = null);
+
+    /// <summary>
+    /// Retrieves the note of a specific trip for a user.
+    /// </summary>
+    /// <param name="userId">The ID of the user.</param>
+    /// <param name="tripId">The ID of the trip.</param>
+    /// <returns>The trip note as a string.</returns>
+    Task<string> GetTripNoteAsync(string userId, Guid tripId);
+
+    /// <summary>
+    /// Edits the note of a specific trip for a user.
+    /// </summary>
+    /// <param name="userId">The ID of the user.</param>
+    /// <param name="tripId">The ID of the trip.</param>
+    /// <param name="note">The new note content.</param>
+    /// <returns>True if the note was updated successfully.</returns>
+    Task<bool> EditTripNoteAsync(string userId, Guid tripId, string note);
 }

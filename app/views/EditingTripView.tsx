@@ -176,9 +176,9 @@ const EditTripView = () => {
     setError(tripError || destinationError || editError || "");
   }, [tripError, destinationError, editError]);
 
-  useEffect(() => {
-    setProfilesErrors(categoryProfilesError || conditionProfilesError || "");
-  }, [categoryProfilesError, conditionProfilesError]);
+  // useEffect(() => {
+  //   setProfilesErrors(categoryProfilesError || conditionProfilesError || "");
+  // }, [categoryProfilesError, conditionProfilesError]);
 
   useEffect(() => {
     setLoading(
@@ -437,17 +437,18 @@ const EditTripView = () => {
             {errors.numberOfTravelers && (
               <Text style={styles.textError}>{errors.numberOfTravelers}</Text>
             )}
-
-            <CurrencyValueInput
-              budget={editTripRequest.budget}
-              currency={editTripRequest.currencyCode}
-              handleBudgetChange={handleChange("budget")}
-              error={!!errors.budget}
-              currencyDisable={true}
-            />
-            {errors.budget && (
-              <Text style={styles.textError}>{errors.budget}</Text>
-            )}
+            <View style={styles.narrowerWrapper}>
+              <CurrencyValueInput
+                budget={editTripRequest.budget}
+                currency={editTripRequest.currencyCode}
+                handleBudgetChange={handleChange("budget")}
+                error={!!errors.budget}
+                currencyDisable={true}
+              />
+              {errors.budget && (
+                <Text style={styles.textError}>{errors.budget}</Text>
+              )}
+            </View>
 
             <ClickableInput
               icon="account"
@@ -584,6 +585,7 @@ const createStyles = (theme: MD3Theme) =>
       alignItems: "center",
       width: width,
     },
+    narrowerWrapper: { width: "90%" },
     image: { marginVertical: 25, width: "100%", height: height * 0.25 },
     textInput: {
       width: "90%",

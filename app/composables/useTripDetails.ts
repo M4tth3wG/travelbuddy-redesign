@@ -208,7 +208,7 @@ export const useTripNotes = (
     setError(null);
 
     try {
-      const response = await api!.get<TripNote>(`/trips/${tripId}/notes`);
+      const response = await api!.get<TripNote>(`/trips/${tripId}/note`);
       setNotes(response.data);
     } catch (err: any) {
       setError(
@@ -227,7 +227,7 @@ export const useTripNotes = (
   return { notes, loading, error, refetch: fetchNotes };
 };
 
-// Hook do dodawania notatki
+// Hook do edytowania notatki
 export const useSaveTripNote = (tripId: string | null) => {
   const { api } = useAuth();
   const [loading, setLoading] = useState<boolean>(false);
@@ -241,7 +241,7 @@ export const useSaveTripNote = (tripId: string | null) => {
       setError(null);
 
       try {
-        const response = await api!.post<TripNote>(`/trips/${tripId}/notes`, {
+        const response = await api!.put<TripNote>(`/trips/${tripId}/note`, {
           content,
         });
         return response.data;

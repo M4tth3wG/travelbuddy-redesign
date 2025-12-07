@@ -433,4 +433,42 @@ public class TripsService(TravelBuddyDbContext dbContext, INBPService nbpService
 
         return await _placesService.GetPlaceRecommendationsAsync((trip.Destination.Latitude.Value, trip.Destination.Longitude.Value), radius, trip.CategoryProfile.Categories, trip.ConditionProfile?.Conditions, limit);
     }
+
+    public async Task<string> GetTripNoteAsync(string userId, Guid tripId)
+    {
+        Trip trip = await _dbContext.Trips
+            .Where(t => t.Id == tripId && t.UserId == userId)
+            .FirstOrDefaultAsync() ?? throw new ArgumentException(ErrorMessage.TripNotFound);
+
+        return trip.Note ?? string.Empty;
+    }
+
+    public async Task<bool> EditTripNoteAsync(string userId, Guid tripId, string note)
+    {
+        try
+        {
+            using var transaction = await _dbContext.Database.BeginTransactionAsync();
+
+            Trip trip = await _dbContext.Trips
+                .Where(t => t.Id == tripId && t.UserId == userId)
+                .FirstOrDefaultAsync() ?? throw new ArgumentException(ErrorMessage.TripNotFound);
+
+            trip.Note = note;
+
+            _dbContext.Trips.Update(trip);
+            await _dbContext.SaveChangesAsync();
+            await transaction.CommitAsync();
+
+            return true;
+        }
+        catch (Exception e) when (e is InvalidOperationException || e is ArgumentException || e is DbUpdateException)
+        {
+            if (_dbContext.Database.CurrentTransaction != null)
+            {
+                await _dbContext.Database.RollbackTransactionAsync();
+            }
+            throw new InvalidOperationException($"{ErrorMessage.EditTrip} {e.Message}");
+        }
+    }
+
 }

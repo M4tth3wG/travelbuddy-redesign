@@ -6,25 +6,36 @@ import { useSnackbar } from "@/context/SnackbarContext";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import ActionButtons from "@/components/ActionButtons";
 import { useTripNotes, useSaveTripNote } from "@/composables/useTripDetails";
+import LoadingView from "./LoadingView";
+import { useShouldRefresh } from "@/context/ShouldRefreshContext";
 
 const { width } = Dimensions.get("window");
 
 const TripNoteView = () => {
   const theme = useTheme() as MD3ThemeExtended;
+  const { addRefreshScreen } = useShouldRefresh();
   const styles = createStyles(theme);
   const router = useRouter();
-  const params = useLocalSearchParams<{ tripId: string }>();
-  const { tripId } = params;
+  const params = useLocalSearchParams<{ trip_id: string }>();
+  const { trip_id } = params;
   const { showSnackbar } = useSnackbar();
 
-  const { notes, refetch } = useTripNotes(tripId || null);
-  const { saveNote, loading, error } = useSaveTripNote(tripId || null);
+  const { notes, loading: getNoteLoading, refetch } = useTripNotes(trip_id);
+  const {
+    saveNote,
+    loading: saveNoteLoading,
+    error,
+  } = useSaveTripNote(trip_id);
 
-  const [content, setContent] = useState("");
+  // teraz notes jest obiektem { content: string } lub null
+  const [content, setContent] = useState(notes?.content || "");
 
+  // synchronizacja stanu content z notes.content
   useEffect(() => {
-    if (notes) setContent(notes.content);
+    if (notes !== null) setContent(notes.content);
   }, [notes]);
+
+  const loading = getNoteLoading || saveNoteLoading;
 
   const handleSave = async () => {
     if (!content.trim()) {
@@ -32,19 +43,30 @@ const TripNoteView = () => {
       return;
     }
 
-    const success = await saveNote(content);
-    if (success) {
-      showSnackbar("Notatka została zapisana!", "success");
-      refetch();
-      router.back();
-    } else if (error) {
-      showSnackbar(error, "error");
+    if (content === notes?.content) {
+      showSnackbar("Nie wprowadzono żadnych zmian", "info");
+      return;
+    }
+
+    try {
+      const updatedNote = await saveNote(content);
+      if (updatedNote) {
+        showSnackbar("Notatka została zapisana!", "success");
+        addRefreshScreen("trip-details");
+        router.back();
+      } else if (error) {
+        showSnackbar(error, "error");
+      }
+    } catch (err) {
+      showSnackbar("Wystąpił błąd podczas zapisania notatki", "error");
     }
   };
 
   const handleReset = () => {
     setContent(notes?.content || "");
   };
+
+  if (loading) return <LoadingView />;
 
   return (
     <View style={styles.container}>

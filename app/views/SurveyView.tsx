@@ -164,13 +164,15 @@ const SurveyView = () => {
             </View>
           </View>
 
-          <CurrencyValueInput
-            label={"Koszt"}
-            budget={cost}
-            currency={currency ? (currency as string) : ""}
-            currencyDisable={true}
-            handleBudgetChange={handleChange(setCost)}
-          />
+          <View style={styles.narrowerWrapper}>
+            <CurrencyValueInput
+              label={"Koszt"}
+              budget={cost}
+              currency={currency ? (currency as string) : ""}
+              currencyDisable={true}
+              handleBudgetChange={handleChange(setCost)}
+            />
+          </View>
 
           <SegmentedButtons
             value={costType}
@@ -222,6 +224,7 @@ const createStyles = (theme: MD3ThemeExtended) =>
       width: "100%",
       paddingTop: 20,
     },
+    narrowerWrapper: { width: "90%" },
     content: {
       paddingHorizontal: 16,
       paddingBottom: 100,

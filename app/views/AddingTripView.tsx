@@ -233,6 +233,7 @@ const AddingTripView = () => {
       currencyCode: currency,
       categoryProfileId: categoryProfileId ?? null,
       conditionProfileId: conditionProfileId ?? null,
+      note: "",
     };
     setLoading(true);
     try {
@@ -331,15 +332,17 @@ const AddingTripView = () => {
               <Text style={styles.textError}>{errors.numberOfPeople}</Text>
             )}
 
-            <CurrencyValueInput
-              budget={budget}
-              currency={currency}
-              handleBudgetChange={handleChange(setBudget, "budget")}
-              error={!!errors.budget}
-            />
-            {errors.budget && (
-              <Text style={styles.textError}>{errors.budget}</Text>
-            )}
+            <View style={styles.narrowerWrapper}>
+              <CurrencyValueInput
+                budget={budget}
+                currency={currency}
+                handleBudgetChange={handleChange(setBudget, "budget")}
+                error={!!errors.budget}
+              />
+              {errors.budget && (
+                <Text style={styles.textError}>{errors.budget}</Text>
+              )}
+            </View>
 
             <ClickableInput
               icon="account"
@@ -456,6 +459,9 @@ const createStyles = (theme: MD3Theme) =>
       flex: 1,
       backgroundColor: theme.colors.surface,
       width: width,
+    },
+    narrowerWrapper: {
+      width: "90%",
     },
     container: {
       flex: 1,
