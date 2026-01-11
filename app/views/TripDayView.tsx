@@ -663,46 +663,52 @@ const TripDayView = () => {
   };
 
   useLayoutEffect(() => {
-    const showMenu = tripPoints.length > 0;
+    const currentVersion = process.env.EXPO_PUBLIC_FEATURE_VERSION || "v1";
+
+    const actionPoints = {
+      title: "Dodaj punkty dnia do kalendarza",
+      titleStyle: {
+        color: theme.colors.onSurface,
+        flexWrap: "wrap",
+        width: 200,
+      },
+      icon: CALENDAR_ADD_ICON_MATERIAL,
+      color: theme.colors.onSurface,
+      onPress: () => addTripDayPointsToCalendar(tripDay, tripPoints),
+    };
+
+    const actionWholeDay = {
+      title: "Dodaj cały dzień do kalendarza",
+      titleStyle: {
+        color: theme.colors.onSurface,
+        flexWrap: "wrap",
+        width: 200,
+      },
+      icon: CALENDAR_ADD_ICON_MATERIAL,
+      color: theme.colors.onSurface,
+      onPress: () =>
+        addWholeTripDayToCalendar(tripDay, tripPoints, tripName as string),
+    };
+
+    let menuActions: any[] = [];
+    if (tripPoints.length > 0) {
+      if (currentVersion === "v2") {
+        menuActions = [actionPoints];
+      } else if (currentVersion === "v3") {
+        menuActions = [actionWholeDay];
+      }
+    }
 
     navigation.setOptions({
-      actions: showMenu
-        ? [
-            {
-              hasMenu: true,
-              menuActions: [
-                {
-                  title: "Dodaj punkty dnia do kalendarza",
-                  titleStyle: {
-                    color: theme.colors.onSurface,
-                    flexWrap: "wrap",
-                    width: 200,
-                  },
-                  icon: CALENDAR_ADD_ICON_MATERIAL,
-                  color: theme.colors.onSurface,
-                  onPress: () =>
-                    addTripDayPointsToCalendar(tripDay, tripPoints),
-                },
-                {
-                  title: "Dodaj cały dzień do kalendarza",
-                  titleStyle: {
-                    color: theme.colors.onSurface,
-                    flexWrap: "wrap",
-                    width: 200,
-                  },
-                  icon: CALENDAR_ADD_ICON_MATERIAL,
-                  color: theme.colors.onSurface,
-                  onPress: () =>
-                    addWholeTripDayToCalendar(
-                      tripDay,
-                      tripPoints,
-                      tripName as string,
-                    ),
-                },
-              ],
-            },
-          ]
-        : [], // brak akcji, menu się nie pojawi
+      actions:
+        menuActions.length > 0
+          ? [
+              {
+                hasMenu: true,
+                menuActions: menuActions,
+              },
+            ]
+          : [],
     });
   }, [navigation, tripDay, tripPoints, tripName, theme]);
 

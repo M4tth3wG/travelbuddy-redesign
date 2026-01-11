@@ -16,7 +16,7 @@ import {
   NOTE_ICON_MATERIAL,
 } from "@/constants/Icons";
 import { router, useLocalSearchParams, useNavigation } from "expo-router";
-import SingleDatePickerModal from "@/components/SingleDatePickerModal";
+import SingleDatePickerModal from "@/components/SingleDatePickerModal/SingleDatePickerModal";
 import { CalendarDate } from "react-native-paper-dates/lib/typescript/Date/Calendar";
 import { useTripDetails } from "@/composables/useTripDetails";
 import { TripDay, TripViewModel } from "@/types/Trip";
@@ -57,21 +57,16 @@ const TripDetailsView = () => {
     [refreshScreens],
   );
 
-  // Removal modal
   const [isModalVisible, setIsModalVisible] = useState(false);
-
   const hideModal = () => setIsModalVisible(false);
-
   const showRemovalModal = () => setIsModalVisible(true);
 
   const deleteTrip = async (tripId: string | undefined) => {
     if (!tripId) return;
-
     hideModal();
     try {
       await api!.delete(`/trips/${tripId}`);
       await removeImage(tripId);
-
       addRefreshScreen("trips");
       router.navigate("/trips");
       showSnackbar("Usunięto wycieczkę!");
@@ -79,7 +74,8 @@ const TripDetailsView = () => {
       showSnackbar("Wystąpił błąd podczas usuwania wycieczki", "error");
     }
   };
-  const { trip_id, refresh } = useLocalSearchParams();
+
+  const { trip_id } = useLocalSearchParams();
   const navigation = useNavigation();
 
   const {
@@ -114,7 +110,6 @@ const TripDetailsView = () => {
 
   const { getImageName, removeImage } = useTripImageStorage();
   const [resolvedImage, setResolvedImage] = useState(null);
-
   const resolvedImageSource = resolvedImage ?? DEFAULT_TRIP_IMAGE;
 
   useEffect(() => {
@@ -124,7 +119,6 @@ const TripDetailsView = () => {
         setResolvedImage(TRIP_IMAGES[storedImageName]);
       }
     };
-
     fetchImageName();
   }, [trip_id, getImageName]);
 
@@ -138,24 +132,19 @@ const TripDetailsView = () => {
     refetch();
   }, [tripDetails]);
 
-  const loading = useMemo(() => {
-    return tripLoading || destinationLoading || false;
-  }, [tripLoading, destinationLoading]);
-
-  const error = useMemo(() => {
-    return (
+  const loading = useMemo(
+    () => tripLoading || destinationLoading || false,
+    [tripLoading, destinationLoading],
+  );
+  const error = useMemo(
+    () =>
       tripError ||
       destinationError ||
       categoryProfileError ||
       conditionProfileError ||
-      null
-    );
-  }, [
-    tripError,
-    destinationError,
-    categoryProfileError,
-    conditionProfileError,
-  ]);
+      null,
+    [tripError, destinationError, categoryProfileError, conditionProfileError],
+  );
 
   const { showSnackbar } = useSnackbar();
 
@@ -210,9 +199,7 @@ const TripDetailsView = () => {
     );
   }, [tripDetails]);
 
-  const handlePress = () => {
-    setDateModalVisible(true);
-  };
+  const handlePress = () => setDateModalVisible(true);
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -226,26 +213,20 @@ const TripDetailsView = () => {
                 title: "Edytuj",
                 icon: EDIT_ICON_MATERIAL,
                 color: theme.colors.onSurface,
-                onPress: () => {
-                  router.push(`/trips/edit/${trip_id}`);
-                },
+                onPress: () => router.push(`/trips/edit/${trip_id}`),
               },
             ),
             {
               title: "Zobacz notatkę",
               icon: NOTE_ICON_MATERIAL,
               color: theme.colors.onSurface,
-              onPress: () => {
-                router.push(`/trips/note/${trip_id}`);
-              },
+              onPress: () => router.push(`/trips/note/${trip_id}`),
             },
             {
               title: "Usuń",
               icon: DELETE_ICON,
               color: theme.colors.error,
-              onPress: () => {
-                showRemovalModal();
-              },
+              onPress: () => showRemovalModal(),
             },
           ],
         },
@@ -253,38 +234,69 @@ const TripDetailsView = () => {
     });
   }, [navigation, tripDetails]);
 
-  const handleDismiss = useCallback(() => {
-    setDateModalVisible(false);
-  }, [setDateModalVisible]);
+  const handleDismiss = useCallback(() => setDateModalVisible(false), []);
 
   const handleConfirm = useCallback(
     ({ date }: { date: CalendarDate }) => {
-      const fixedDate = date as Date;
-      const formattedDate = formatDateToISO(fixedDate);
+      const formattedDate = formatDateToISO(date as Date);
       const tripDayId = dateToIdMap.get(formattedDate);
       if (tripDayId) {
-        console.log("Redirecting to day with id " + tripDayId);
         setDateModalVisible(false);
         router.push({
           pathname: `/trips/details/${trip_id}/day/${tripDayId}`,
           params: { tripName: tripDetails?.name },
         });
-      } else {
-        console.error("Day not found");
       }
     },
-    [setDateModalVisible, dateToIdMap],
+    [trip_id, tripDetails, dateToIdMap],
   );
 
-  if (loading) {
-    return <LoadingView transparent={false} />;
-  }
+  const renderFAB = () => {
+    const version = process.env.EXPO_PUBLIC_FEATURE_VERSION || "v1";
 
+    switch (version) {
+      case "v2":
+        return (
+          <FAB
+            color={theme.colors.onPrimary}
+            style={styles.fab}
+            icon={CALENDAR_ICON}
+            label="Wybierz dzień"
+            customSize={width * 0.1}
+            onPress={handlePress}
+          />
+        );
+      case "v3":
+        return (
+          <FAB
+            color={theme.colors.onPrimary}
+            style={[styles.fab, styles.fabV3]}
+            label="Otwórz kalendarz wycieczki"
+            customSize={width * 0.1}
+            onPress={handlePress}
+          />
+        );
+      case "v1":
+      default:
+        return (
+          <FAB
+            color={theme.colors.onPrimary}
+            style={styles.fab}
+            icon={CALENDAR_ICON}
+            customSize={width * 0.25}
+            onPress={handlePress}
+          />
+        );
+    }
+  };
+
+  if (loading) return <LoadingView transparent={false} />;
   if (error) {
     router.back();
     showSnackbar(error?.toString() || "Unknown error", "error");
     return null;
   }
+
   return (
     <>
       <View style={styles.container}>
@@ -309,14 +321,7 @@ const TripDetailsView = () => {
                   ))}
             </View>
 
-            <FAB
-              color={theme.colors.onPrimary}
-              style={styles.fab}
-              icon={CALENDAR_ICON}
-              label="Wybierz dzień"
-              customSize={width * 0.1}
-              onPress={handlePress}
-            />
+            {renderFAB()}
           </View>
         </ScrollView>
 
@@ -330,6 +335,7 @@ const TripDetailsView = () => {
           />
         )}
       </View>
+
       <CustomModal visible={isModalVisible} onDismiss={hideModal}>
         <View>
           <Text style={styles.modalTitleText}>
@@ -383,26 +389,19 @@ const createStyles = (theme: MD3ThemeExtended) =>
       right: 16,
       borderRadius: 10000,
     },
+    fabV2: {
+      borderRadius: 12,
+      top: 24,
+    },
+    fabV3: {
+      borderRadius: 20,
+      backgroundColor: theme.colors.tertiary,
+      top: 10,
+    },
     image: {
       marginBottom: 25,
       width: "100%",
       height: height * 0.25,
-    },
-    loadingContainer: {
-      flex: 1,
-      justifyContent: "center",
-      alignItems: "center",
-      backgroundColor: theme.colors.surface,
-    },
-    errorContainer: {
-      flex: 1,
-      justifyContent: "center",
-      alignItems: "center",
-      backgroundColor: theme.colors.surface,
-    },
-    errorText: {
-      color: theme.colors.error,
-      fontSize: 16,
     },
     modalTitleText: {
       ...theme.fonts.titleLarge,

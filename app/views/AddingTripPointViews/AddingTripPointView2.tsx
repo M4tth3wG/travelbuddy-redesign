@@ -10,7 +10,6 @@ import {
 } from "react-native-paper";
 import {
   addHoursToTheSameDay,
-  convertTimestampToDateTime,
   formatTime,
   roundToNearestQuarterHour,
 } from "@/utils/TimeUtils";
@@ -23,15 +22,18 @@ import { TripErrors } from "@/types/Trip";
 import { CALENDAR_ICON } from "@/constants/Icons";
 import { useAnimatedKeyboard } from "react-native-reanimated";
 import TripPointTypePicker from "@/components/TripPointTypePicker";
-import { Category, TripPointRequest } from "@/types/TripDayData";
+import {
+  TripPointRequest,
+  TripPointDetails,
+  Category,
+} from "@/types/TripDayData";
 import { Place } from "@/types/Place";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import LoadingView from "./LoadingView";
+import LoadingView from "../LoadingView";
 import { useSnackbar } from "@/context/SnackbarContext";
-import { useAuth } from "@/app/ctx";
-import { API_TRIP_POINT, PLACE_DETAILS_ENDPOINT } from "@/constants/Endpoints";
-import { useGetTripPoint } from "@/composables/useTripPoint";
 import { useTripDetails } from "@/composables/useTripDetails";
+import usePlaceDetails from "@/composables/usePlace";
+import { useAuth } from "@/app/ctx";
 import {
   CATEGORY_NAME_LIST,
   CategoryLabelsForProfiles,
@@ -39,39 +41,39 @@ import {
 } from "@/types/Profile";
 import { useGetCategories } from "@/composables/useCategoryCondition";
 import {
+  API_TRIP_POINT,
+  ATTRACTION_DETAILS_ENDPOINT,
+  PLACE_DETAILS_ENDPOINT,
+} from "@/constants/Endpoints";
+import {
   NEW_OVERLAPPING_ERROR_MESSAGE,
   OVERLAPPING_TRIP_POINTS_MESSAGE,
 } from "@/constants/Messages";
 import {
-  onEndEditingString,
   requiredFieldsForTripPoint,
+  onEndEditingString,
 } from "@/utils/validations";
-import usePlaceDetails from "@/composables/usePlace";
 import { findAttractionCategory } from "@/utils/CategoryUtils";
 import { useShouldRefresh } from "@/context/ShouldRefreshContext";
 
 const { height, width } = Dimensions.get("window");
 
-const EditingTripPointView2 = () => {
+const AddingTripPointView2 = () => {
   const theme = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const router = useRouter();
   const { showSnackbar } = useSnackbar();
 
-  const params = useLocalSearchParams();
-  const { trip_id, day_id, trip_point_id } = params;
+  const { trip_id, day_id, date, attractionProviderId } =
+    useLocalSearchParams();
 
-  const { date } = useLocalSearchParams();
+  useEffect(() => {
+    console.log(attractionProviderId);
+  }, [attractionProviderId]);
 
   useAnimatedKeyboard();
 
   const { api } = useAuth();
-
-  const {
-    tripPointDetails,
-    loading: tripPointLoading,
-    error: tripPointError,
-  } = useGetTripPoint(trip_point_id as string);
 
   const {
     tripDetails,
@@ -79,15 +81,16 @@ const EditingTripPointView2 = () => {
     error: tripError,
   } = useTripDetails(trip_id as string);
 
-  const [placeId, setPlaceId] = useState<string | undefined>(undefined);
-
   const {
-    placeDetails,
-    loading: placeLoading,
-    error: placeError,
-    success,
-    refetch: fetchPlaceDetails,
-  } = usePlaceDetails(placeId, PLACE_DETAILS_ENDPOINT, { immediate: false });
+    placeDetails: destinationDetails,
+    loading: destinationLoading,
+    error: destinationError,
+  } = usePlaceDetails(
+    attractionProviderId
+      ? (attractionProviderId as string)
+      : tripDetails?.destinationId,
+    attractionProviderId ? ATTRACTION_DETAILS_ENDPOINT : PLACE_DETAILS_ENDPOINT,
+  );
 
   const {
     items: categories,
@@ -95,7 +98,9 @@ const EditingTripPointView2 = () => {
     error: categoriesError,
   } = useGetCategories();
 
-  const [tripPointName, setTripPointName] = useState("");
+  const [tripPointName, setTripPointName] = useState<string>("");
+
+  const { addRefreshScreen } = useShouldRefresh();
 
   const [errors, setErrors] = useState<TripErrors>({});
   const [loading, setLoading] = useState<boolean>(false);
@@ -103,13 +108,11 @@ const EditingTripPointView2 = () => {
 
   const [expectedCost, setExpectedCost] = useState<number>(0);
   const [costType, setCostType] = useState<string>("perPerson");
-  const selectedCurrency = tripPointDetails
-    ? tripPointDetails.currencyCode
-    : "EUR";
+  const selectedCurrency = tripDetails ? tripDetails.currencyCode : "EUR";
   const [comment, setComment] = useState<string>("");
   const [tripPointCategory, setTripPointCategory] = useState<
     Category | undefined
-  >();
+  >(undefined);
   const [startTime, setStartTime] = useState<Date>(roundToNearestQuarterHour());
   const [endTime, setEndTime] = useState<Date>(
     addHoursToTheSameDay(startTime, 1),
@@ -133,23 +136,6 @@ const EditingTripPointView2 = () => {
 
   const [filteredCategories, setFilteredCategories] = useState<Category[]>([]);
 
-  const { addRefreshScreen } = useShouldRefresh();
-
-  useEffect(() => {
-    if (tripPointDetails?.place?.id) {
-      setPlaceId(tripPointDetails?.place?.id);
-    }
-  }, [tripPointDetails]);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      if (placeId) {
-        await fetchPlaceDetails();
-      }
-    };
-    fetchData();
-  }, [placeId]);
-
   const handleChange = (
     setter: React.Dispatch<React.SetStateAction<any>>,
     field: keyof TripErrors = "",
@@ -163,64 +149,59 @@ const EditingTripPointView2 = () => {
 
   useEffect(() => {
     setFilteredCategories(
-      categories.filter((category) =>
+      categories.filter((category: Category) =>
         CATEGORY_NAME_LIST.includes(category.name),
       ),
     );
-    setTripPointCategory(getCategoryByName(DEFAULT_CATEGORY_NAME));
+    if (!attractionProviderId)
+      setTripPointCategory(getCategoryByName(DEFAULT_CATEGORY_NAME));
   }, [categories]);
 
   useEffect(() => {
-    if (tripPointDetails) {
-      setTripPointName(tripPointDetails.name);
-      setCountry(tripPointDetails.place?.country || null);
-      setState(tripPointDetails.place?.state || null);
-      setCity(tripPointDetails.place?.city || null);
-      setStreet(tripPointDetails.place?.street || null);
-      setHouseNumber(tripPointDetails.place?.houseNumber || null);
-      setComment(tripPointDetails.comment || "");
-      setTripPointCategory(
-        tripPointDetails?.place?.superCategory ||
+    console.log(JSON.stringify(destinationDetails));
+    if (destinationDetails) {
+      setCountry(destinationDetails.country);
+      setState(destinationDetails.state || "");
+      setCity(destinationDetails.city);
+      if (attractionProviderId) {
+        setTripPointName(destinationDetails.name);
+        setStreet(destinationDetails.street || "");
+        setHouseNumber(destinationDetails.houseNumber || "");
+        setLatitude(destinationDetails.latitude || null);
+        setLongitude(destinationDetails.longitude || null);
+        setLatitudeText(
+          destinationDetails.latitude
+            ? destinationDetails.latitude.toString()
+            : null,
+        );
+        setLongitudeText(
+          destinationDetails.longitude
+            ? destinationDetails.longitude.toString()
+            : null,
+        );
+        setTripPointCategory(
           getCategoryByName(
-            placeDetails
-              ? findAttractionCategory(placeDetails)
-              : DEFAULT_CATEGORY_NAME,
+            destinationDetails.superCategory?.name ??
+              findAttractionCategory(destinationDetails),
           ),
-      );
-      setStartTime(convertTimestampToDateTime(tripPointDetails.startTime));
-      setEndTime(convertTimestampToDateTime(tripPointDetails.endTime));
-      setExpectedCost(tripPointDetails.predictedCost || 0);
+        );
+      } else {
+        setTripPointCategory(getCategoryByName(DEFAULT_CATEGORY_NAME));
+      }
+      setIsAttraction(!!attractionProviderId);
     }
-    if (placeDetails && success) {
-      setLatitude(placeDetails.latitude || null);
-      setLongitude(placeDetails.longitude || null);
-      setLatitudeText(
-        placeDetails.latitude ? placeDetails.latitude.toString() : null,
-      );
-      setLongitudeText(
-        placeDetails.longitude ? placeDetails.longitude.toString() : null,
-      );
-    }
-    setIsAttraction(isAttraction || !!tripPointDetails?.place?.providerId);
-  }, [tripPointDetails, placeDetails, success]);
+  }, [destinationDetails]);
 
   useEffect(() => {
     setErrors((prev) => ({
       ...prev,
-      ["api"]:
-        tripError || tripPointError || categoriesError || placeError || "",
+      ["api"]: tripError || destinationError || categoriesError || "",
     }));
-  }, [tripError, tripPointError, categoriesError, placeError]);
+  }, [tripError, destinationError, categoriesError]);
 
   useEffect(() => {
-    setLoading(
-      tripLoading ||
-        tripPointLoading ||
-        categoriesLoading ||
-        placeLoading ||
-        false,
-    );
-  }, [tripLoading, tripPointLoading, categoriesLoading, placeLoading]);
+    setLoading(tripLoading || destinationLoading || categoriesLoading || false);
+  }, [tripLoading, destinationLoading, categoriesLoading]);
 
   useEffect(() => {
     if (errors.api) {
@@ -272,21 +253,21 @@ const EditingTripPointView2 = () => {
     return errorData;
   };
 
-  const handleEditRequest = async (editTripPointRequest: TripPointRequest) => {
+  const handleCreateRequest = async (tripPointRequest: TripPointRequest) => {
     try {
       setLoading(true);
-
-      const response = await api!.put(
-        `${API_TRIP_POINT}/${tripPointDetails?.id}`,
-        editTripPointRequest,
+      const response = await api!.post<TripPointDetails>(
+        API_TRIP_POINT,
+        tripPointRequest,
       );
 
       if (!response) {
-        showSnackbar("Nie udało się edytować punktu wycieczki.");
+        showSnackbar("Nie udało się dodać punktu wycieczki.");
         return;
       }
 
       showSnackbar("Punkt wycieczki zapisany!");
+      console.log(attractionProviderId);
       addRefreshScreen("trip-day");
       router.back();
     } catch (err: any) {
@@ -299,8 +280,7 @@ const EditingTripPointView2 = () => {
         ["api"]: err.response.data,
       }));
       showSnackbar(
-        "Nie edytowano punktu wycieczki. " +
-          handleErrorMessage(err.response.data),
+        "Nie dodano punktu wycieczki. " + handleErrorMessage(err.response.data),
       );
     } finally {
       setLoading(false);
@@ -309,7 +289,7 @@ const EditingTripPointView2 = () => {
 
   const getCategoryByName = (categoryName: string): Category | undefined => {
     return filteredCategories.find(
-      (category) => category.name === categoryName,
+      (category: Category) => category.name === categoryName,
     );
   };
 
@@ -329,7 +309,8 @@ const EditingTripPointView2 = () => {
     const hasErrors = validateForm();
     if (!hasErrors) {
       const placeToRequest: Place = {
-        name: placeDetails?.name ?? tripPointName,
+        name: destinationDetails?.name,
+        providerId: attractionProviderId as string,
         superCategoryId: tripPointCategory?.id,
         country: country,
         state: state,
@@ -351,16 +332,16 @@ const EditingTripPointView2 = () => {
       const tripPointRequest: TripPointRequest = {
         name: tripPointName,
         comment: comment,
-        tripDayId: tripPointDetails?.tripDayId || (day_id as string),
+        tripDayId: day_id as string,
         place: placeToRequest,
         startTime: `${formatTime(startTime, true)}`,
         endTime: `${formatTime(endTime, true)}`,
         predictedCost: totalExpectedCost,
       };
 
-      handleEditRequest(tripPointRequest);
+      handleCreateRequest(tripPointRequest);
     } else {
-      showSnackbar("Uzupełnij brakujące pola i popraw błędy!");
+      showSnackbar("Uzupełnij brakujące pola i popraw błędy!", "error");
     }
   };
 
@@ -641,7 +622,7 @@ const EditingTripPointView2 = () => {
   );
 };
 
-export default EditingTripPointView2;
+export default AddingTripPointView2;
 
 const createStyles = (theme: MD3Theme) =>
   StyleSheet.create({

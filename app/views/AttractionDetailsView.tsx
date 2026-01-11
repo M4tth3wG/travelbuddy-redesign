@@ -35,7 +35,7 @@ import { RenderItem } from "@/components/RenderItem";
 import ActionTextButtons from "@/components/ActionTextButtons";
 import { useTripDetails } from "@/composables/useTripDetails";
 import { useAuth } from "@/app/ctx";
-import SingleDatePickerModal from "@/components/SingleDatePickerModal";
+import SingleDatePickerModal from "@/components/SingleDatePickerModal/SingleDatePickerModal";
 import { CalendarDate } from "react-native-paper-dates/lib/typescript/Date/Calendar";
 import { formatDateToISO } from "@/utils/TimeUtils";
 import { TripDay } from "@/types/Trip";
