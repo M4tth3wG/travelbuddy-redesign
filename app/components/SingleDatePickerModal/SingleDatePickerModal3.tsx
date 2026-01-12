@@ -39,6 +39,8 @@ const SingleDatePickerModal3 = ({
     const list: { date: string; dayIndex: number }[] = [];
     const current = stringToDate(startDate);
     const end = stringToDate(endDate);
+    current.setDate(current.getDate() + 1);
+    end.setDate(end.getDate() + 1);
     let index = 1;
 
     while (current <= end) {
