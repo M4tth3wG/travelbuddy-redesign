@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import {
   Fragment,
@@ -10,7 +11,7 @@ import {
 import { Dimensions, ScrollView, StyleSheet, View } from "react-native";
 import { useTheme, FAB, TextInput, Text } from "react-native-paper";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { TripPointCard } from "@/components/TripPointCard";
 import { TransferPointNode } from "@/components/TransferPointNode";
 import CreatingTripPointSelector from "@/components/CreatingTripPointSelector";
@@ -66,6 +67,8 @@ import NotificationFormBottomSheet from "@/components/NotificationFormBottomShee
 import { addEventToMainCalendar } from "@/utils/calendar";
 import { API_REJECT_REVIEW } from "@/constants/Endpoints";
 import { useShouldRefresh } from "@/context/ShouldRefreshContext";
+import WeatherBadge from "@/components/weather/WeatherBadge";
+import { WeatherAdviceCard } from "@/components/weather/WeatherAdviceCard";
 
 const { width } = Dimensions.get("window");
 
@@ -780,6 +783,20 @@ const TripDayView = () => {
     return false;
   };
 
+  const weatherCoords = useMemo(() => {
+    const pointWithCoords = sortedTripPoints.find(
+      (p) => p.latitude !== null && p.longitude !== null,
+    );
+
+    if (pointWithCoords) {
+      return {
+        lat: pointWithCoords.latitude as number,
+        lon: pointWithCoords.longitude as number,
+      };
+    }
+    return null;
+  }, [sortedTripPoints]);
+
   if (loading) {
     return <LoadingView transparent={false} />;
   }
@@ -805,9 +822,28 @@ const TripDayView = () => {
             </View>
           ) : (
             <>
-              <View style={{ height: 40 }} />
+              {weatherCoords && tripDay?.date && (
+                <WeatherAdviceCard
+                  lat={weatherCoords.lat}
+                  lon={weatherCoords.lon}
+                  date={tripDay.date}
+                />
+              )}
+
               {sortedTripPoints.map((fromTripPoint, index) => (
                 <Fragment key={fromTripPoint.id}>
+                  {fromTripPoint.latitude &&
+                    fromTripPoint.longitude &&
+                    tripDay?.date && (
+                      <View style={styles.weatherBadgeContainer}>
+                        <WeatherBadge
+                          lat={fromTripPoint.latitude}
+                          lon={fromTripPoint.longitude}
+                          date={tripDay.date}
+                        />
+                      </View>
+                    )}
+
                   <TripPointCard
                     onPress={() => handleTripPointPress(fromTripPoint)}
                     onLongPress={() => handleTripPointLongPress(fromTripPoint)}
@@ -927,6 +963,13 @@ const createStyles = (theme: MD3ThemeExtended) =>
       marginTop: -10,
       color: theme.colors.onSurface,
       ...theme.fonts.bodyMedium,
+    },
+    weatherBadgeContainer: {
+      width: width * 0.9,
+      flexDirection: "row",
+      justifyContent: "flex-end",
+      marginBottom: -10,
+      zIndex: 1,
     },
     modalSubtitle: {
       color: theme.colors.onSurface,

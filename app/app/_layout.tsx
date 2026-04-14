@@ -22,6 +22,7 @@ import { ShouldRefreshProvider } from "@/context/ShouldRefreshContext";
 import Notification from "@/utils/notifications";
 import Calendar from "@/utils/calendar";
 import { pl, registerTranslation } from "react-native-paper-dates";
+import { WeatherProvider } from "@/context/WeatherContext";
 
 registerTranslation("pl", pl);
 
@@ -71,17 +72,19 @@ function RootLayout() {
           <NotificationDataProvider>
             <TripImageContextProvider>
               <ShouldRefreshProvider>
-                <Portal.Host>
-                  <StatusBar
-                    backgroundColor={appTheme.colors.surface}
-                    barStyle={
-                      theme === "dark" ? "light-content" : "dark-content"
-                    }
-                  />
-                  <View style={styles.container}>
-                    <Slot />
-                  </View>
-                </Portal.Host>
+                <WeatherProvider>
+                  <Portal.Host>
+                    <StatusBar
+                      backgroundColor={appTheme.colors.surface}
+                      barStyle={
+                        theme === "dark" ? "light-content" : "dark-content"
+                      }
+                    />
+                    <View style={styles.container}>
+                      <Slot />
+                    </View>
+                  </Portal.Host>
+                </WeatherProvider>
               </ShouldRefreshProvider>
             </TripImageContextProvider>
           </NotificationDataProvider>
@@ -91,6 +94,7 @@ function RootLayout() {
   );
 }
 
+// eslint-disable-next-line react/display-name
 export default () => {
   return (
     <AppSettingsProvider>
