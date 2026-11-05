@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(./backend/TravelBuddyAPI/.env)",
+      "Read(./app/.env)",
+      "Read(./app/.env.development)"
+    ]
+  }
+}
