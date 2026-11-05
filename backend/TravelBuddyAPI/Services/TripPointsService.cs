@@ -233,8 +233,8 @@ public class TripPointsService(TravelBuddyDbContext dbContext, INBPService nbpSe
                     _dbContext.TripPointReviews.Remove(existingTripPoint.Review);
                 }
                 _dbContext.Places.Remove(customPlace);
-                existingTripPoint.PlaceId = placeId;
             }
+            existingTripPoint.PlaceId = placeId;
 
             existingTripPoint.Name = tripPoint.Name;
             existingTripPoint.Comment = tripPoint.Comment;
