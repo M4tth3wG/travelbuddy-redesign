@@ -236,6 +236,64 @@ public class TripsServiceTest
     }
 
     [Theory]
+    [InlineData(null)]
+    [InlineData("Nadpisana notatka")]
+    public async Task EditTripAsync_ShouldNotChangeNote(string? requestNote)
+    {
+        // Arrange
+        var userId = "user1";
+        var tripId = Guid.NewGuid();
+        const string originalNote = "Moja notatka";
+
+        var trip = new Trip
+        {
+            Id = tripId,
+            UserId = userId,
+            CurrencyCode = "USD",
+            Name = "Original Trip",
+            Note = originalNote,
+            StartDate = DateOnly.FromDateTime(DateTime.Now),
+            EndDate = DateOnly.FromDateTime(DateTime.Now + TimeSpan.FromDays(1)),
+            NumberOfTravelers = 2,
+            ExchangeRate = 4.5m,
+            Budget = 1000m,
+            TripDays = new List<TripDay>
+            {
+                new TripDay { Id = Guid.NewGuid(), Date = DateOnly.FromDateTime(DateTime.Now) },
+                new TripDay { Id = Guid.NewGuid(), Date = DateOnly.FromDateTime(DateTime.Now + TimeSpan.FromDays(1)) }
+            }
+        };
+
+        await _dbContext.Trips.AddAsync(trip);
+        await _dbContext.SaveChangesAsync();
+
+        var tripRequest = new TripRequestDTO
+        {
+            Name = "Edited Trip",
+            Note = requestNote,
+            StartDate = trip.StartDate,
+            EndDate = trip.EndDate,
+            NumberOfTravelers = 3,
+            CurrencyCode = "USD",
+            Budget = 2000m,
+            DestinationProviderId = Guid.NewGuid().ToString(),
+        };
+
+        _mockNBPService.Setup(x => x.GetRateAsync(It.IsAny<string>(), It.IsAny<DateOnly?>())).ReturnsAsync(4.5m);
+        _mockPlacesService.Setup(x => x.AddPlaceAsync(It.IsAny<PlaceRequestDTO>())).ReturnsAsync(new PlaceDetailsDTO() { Id = Guid.NewGuid(), ProviderId = tripRequest.DestinationProviderId });
+
+        // Act
+        var result = await _tripsService.EditTripAsync(userId, tripId, tripRequest);
+
+        // Assert
+        Assert.True(result);
+        var editedTrip = await _dbContext.Trips.FindAsync(tripId);
+        Assert.NotNull(editedTrip);
+        Assert.Equal(tripRequest.Name, editedTrip.Name);
+        Assert.Equal(originalNote, editedTrip.Note);
+    }
+
+    [Theory]
     [InlineData(0, 1, 0, 10)]
     [InlineData(10, 20, -5, -1)]
     [InlineData(0, 1, 10, 12)]
@@ -560,5 +618,152 @@ public class TripsServiceTest
         // Act & Assert
         var exception = await Assert.ThrowsAsync<ArgumentException>(() => _tripsService.GetTripDetailsAsync(userId, tripId));
         Assert.Equal($"{ITripsService.ErrorMessage.TripNotFound}", exception.Message);
+    }
+
+    [Fact]
+    public async Task EditTripAsync_NoteSavedDuringEdit_ShouldKeepConcurrentNote()
+    {
+        // Arrange
+        var userId = "user1";
+        var tripId = Guid.NewGuid();
+        var dbName = Guid.NewGuid().ToString();
+        const string concurrentNote = "Notatka zapisana w trakcie edycji";
+
+        var trip = new Trip
+        {
+            Id = tripId,
+            UserId = userId,
+            CurrencyCode = "USD",
+            Name = "Original Trip",
+            Note = "Moja notatka",
+            StartDate = DateOnly.FromDateTime(DateTime.Now),
+            EndDate = DateOnly.FromDateTime(DateTime.Now + TimeSpan.FromDays(1)),
+            NumberOfTravelers = 2,
+            ExchangeRate = 4.5m,
+            Budget = 1000m,
+        };
+        await using (var seedContext = new TravelBuddyDbContext(CreateInMemoryOptions(dbName)))
+        {
+            await seedContext.Trips.AddAsync(trip);
+            await seedContext.SaveChangesAsync();
+        }
+
+        // Inny request zapisuje notatkę po wczytaniu podróży, a przed zapisem edycji.
+        var interceptor = new BeforeFirstSaveInterceptor(async () =>
+        {
+            await using var otherContext = new TravelBuddyDbContext(CreateInMemoryOptions(dbName));
+            var otherTrip = await otherContext.Trips.SingleAsync(t => t.Id == tripId);
+            otherTrip.Note = concurrentNote;
+            await otherContext.SaveChangesAsync();
+        });
+        await using var editContext = new TravelBuddyDbContext(CreateInMemoryOptions(dbName, interceptor));
+        var tripsService = new TripsService(editContext, _mockNBPService.Object, _mockPlacesService.Object, _mockCategoryProfilesService.Object, _mockConditionProfilesService.Object, _mockTripPointsService.Object);
+
+        var tripRequest = new TripRequestDTO
+        {
+            Name = "Edited Trip",
+            StartDate = trip.StartDate,
+            EndDate = trip.EndDate,
+            NumberOfTravelers = 3,
+            CurrencyCode = "USD",
+            Budget = 2000m,
+            DestinationProviderId = Guid.NewGuid().ToString(),
+        };
+
+        _mockNBPService.Setup(x => x.GetRateAsync(It.IsAny<string>(), It.IsAny<DateOnly?>())).ReturnsAsync(4.5m);
+        _mockPlacesService.Setup(x => x.AddPlaceAsync(It.IsAny<PlaceRequestDTO>())).ReturnsAsync(new PlaceDetailsDTO() { Id = Guid.NewGuid(), ProviderId = tripRequest.DestinationProviderId });
+
+        // Act
+        var result = await tripsService.EditTripAsync(userId, tripId, tripRequest);
+
+        // Assert
+        Assert.True(result);
+        await using var assertContext = new TravelBuddyDbContext(CreateInMemoryOptions(dbName));
+        var savedTrip = await assertContext.Trips.SingleAsync(t => t.Id == tripId);
+        Assert.Equal(tripRequest.Name, savedTrip.Name);
+        Assert.Equal(concurrentNote, savedTrip.Note);
+    }
+
+    [Fact]
+    public async Task EditTripNoteAsync_TripEditedDuringNoteSave_ShouldKeepConcurrentTripChanges()
+    {
+        // Arrange
+        var userId = "user1";
+        var tripId = Guid.NewGuid();
+        var dbName = Guid.NewGuid().ToString();
+        const string concurrentName = "Nazwa zmieniona w trakcie zapisu notatki";
+        const decimal concurrentBudget = 9000m;
+        const string newNote = "Nowa notatka";
+
+        var trip = new Trip
+        {
+            Id = tripId,
+            UserId = userId,
+            CurrencyCode = "USD",
+            Name = "Original Trip",
+            Note = "Moja notatka",
+            StartDate = DateOnly.FromDateTime(DateTime.Now),
+            EndDate = DateOnly.FromDateTime(DateTime.Now + TimeSpan.FromDays(1)),
+            NumberOfTravelers = 2,
+            ExchangeRate = 4.5m,
+            Budget = 1000m,
+        };
+        await using (var seedContext = new TravelBuddyDbContext(CreateInMemoryOptions(dbName)))
+        {
+            await seedContext.Trips.AddAsync(trip);
+            await seedContext.SaveChangesAsync();
+        }
+
+        // Inny request edytuje podróż po wczytaniu jej do zapisu notatki, a przed zapisem notatki.
+        var interceptor = new BeforeFirstSaveInterceptor(async () =>
+        {
+            await using var otherContext = new TravelBuddyDbContext(CreateInMemoryOptions(dbName));
+            var otherTrip = await otherContext.Trips.SingleAsync(t => t.Id == tripId);
+            otherTrip.Name = concurrentName;
+            otherTrip.Budget = concurrentBudget;
+            await otherContext.SaveChangesAsync();
+        });
+        await using var noteContext = new TravelBuddyDbContext(CreateInMemoryOptions(dbName, interceptor));
+        var tripsService = new TripsService(noteContext, _mockNBPService.Object, _mockPlacesService.Object, _mockCategoryProfilesService.Object, _mockConditionProfilesService.Object, _mockTripPointsService.Object);
+
+        // Act
+        var result = await tripsService.EditTripNoteAsync(userId, tripId, newNote);
+
+        // Assert
+        Assert.True(result);
+        await using var assertContext = new TravelBuddyDbContext(CreateInMemoryOptions(dbName));
+        var savedTrip = await assertContext.Trips.SingleAsync(t => t.Id == tripId);
+        Assert.Equal(newNote, savedTrip.Note);
+        Assert.Equal(concurrentName, savedTrip.Name);
+        Assert.Equal(concurrentBudget, savedTrip.Budget);
+    }
+
+    private static DbContextOptions<TravelBuddyDbContext> CreateInMemoryOptions(string databaseName, params IInterceptor[] interceptors)
+    {
+        return new DbContextOptionsBuilder<TravelBuddyDbContext>()
+            .UseInMemoryDatabase(databaseName)
+            .ConfigureWarnings(warnings => warnings.Ignore(InMemoryEventId.TransactionIgnoredWarning))
+            .AddInterceptors(interceptors)
+            .Options;
+    }
+
+    /// <summary>
+    /// Runs the given action once, right before the first SaveChanges of the intercepted context.
+    /// Used to simulate another request writing the same row between load and save.
+    /// </summary>
+    private sealed class BeforeFirstSaveInterceptor(Func<Task> action) : SaveChangesInterceptor
+    {
+        private bool _executed;
+
+        public override async ValueTask<InterceptionResult<int>> SavingChangesAsync(DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
+        {
+            if (!_executed)
+            {
+                _executed = true;
+                await action();
+            }
+
+            return result;
+        }
     }
 }
