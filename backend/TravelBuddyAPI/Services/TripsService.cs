@@ -206,7 +206,6 @@ public class TripsService(TravelBuddyDbContext dbContext, INBPService nbpService
             Guid destinationId = await AddDestinationAsync(trip.DestinationProviderId);
 
             existingTrip.Name = trip!.Name;
-            existingTrip.Note = trip.Note;
             existingTrip.NumberOfTravelers = trip.NumberOfTravelers;
             existingTrip.DestinationId = destinationId;
             existingTrip.CategoryProfileId = trip.CategoryProfileId;
@@ -215,7 +214,6 @@ public class TripsService(TravelBuddyDbContext dbContext, INBPService nbpService
             var validationContext = new ValidationContext(existingTrip);
             Validator.ValidateObject(existingTrip, validationContext, validateAllProperties: true);
 
-            _dbContext.Trips.Update(existingTrip);
             await _dbContext.SaveChangesAsync();
             await transaction.CommitAsync();
         }
@@ -455,7 +453,6 @@ public class TripsService(TravelBuddyDbContext dbContext, INBPService nbpService
 
             trip.Note = note;
 
-            _dbContext.Trips.Update(trip);
             await _dbContext.SaveChangesAsync();
             await transaction.CommitAsync();
 
