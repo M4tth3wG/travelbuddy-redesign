@@ -1,8 +1,0 @@
-{
-  "dependencies": {
-    "identityapp1": {
-      "connectionInfo": "Rejestracja aplikacji: TravelBuddyAPI, dzierżawa: BBGG (travelbuddyapi.onmicrosoft.com - AAD B2C)",
-      "type": "identityapp.default"
-    }
-  }
-}
