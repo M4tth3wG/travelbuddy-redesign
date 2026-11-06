@@ -117,8 +117,19 @@ public class PlacesServiceTest
         var byAddress = new ProviderPlace { Id = Guid.NewGuid(), ProviderId = "db-2", Name = "Cafe Two", Country = "Poland", City = "Kraków", Street = "Floriańska", HouseNumber = "2" };
         var sameNameOtherCity = new ProviderPlace { Id = Guid.NewGuid(), ProviderId = "db-3", Name = "Cafe Three", Country = "Poland", City = "Gdańsk", Street = "Długa", HouseNumber = "3" };
         var unrelated = new ProviderPlace { Id = Guid.NewGuid(), ProviderId = "db-4", Name = "Museum", Country = "Poland", City = "Warszawa" };
-        await _dbContext.Places.AddRangeAsync(byProviderId, byAddress, sameNameOtherCity, unrelated);
-        await _dbContext.SaveChangesAsync();
+
+        var options = new DbContextOptionsBuilder<TravelBuddyDbContext>()
+            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+            .Options;
+        using (var seedContext = new TravelBuddyDbContext(options))
+        {
+            await seedContext.Places.AddRangeAsync(byProviderId, byAddress, sameNameOtherCity, unrelated);
+            await seedContext.SaveChangesAsync();
+        }
+
+        // Fresh context: after the call its change tracker holds only the rows the query loaded.
+        using var serviceContext = new TravelBuddyDbContext(options);
+        var placesService = new PlacesService(serviceContext, _mockGeoapifyService.Object, _mockDbCache.Object);
 
         var providerPlaces = new List<ProviderPlace>
         {
@@ -130,13 +141,17 @@ public class PlacesServiceTest
             .ReturnsAsync(providerPlaces);
 
         // Act
-        var result = await _placesService.GetAutocompletePlacesAsync(query, null, null);
+        var result = await placesService.GetAutocompletePlacesAsync(query, null, null);
 
         // Assert
         Assert.Equal(3, result.Count);
         Assert.Equal(byProviderId.Id, result.Single(r => r.ProviderId == "p1").Id);
         Assert.Equal(byAddress.Id, result.Single(r => r.ProviderId == "p2").Id);
         Assert.Null(result.Single(r => r.ProviderId == "p3").Id);
+
+        var loadedIds = serviceContext.ChangeTracker.Entries<ProviderPlace>().Select(e => e.Entity.Id).ToList();
+        Assert.DoesNotContain(unrelated.Id, loadedIds);
+        Assert.DoesNotContain(sameNameOtherCity.Id, loadedIds);
     }
 
     [Fact]

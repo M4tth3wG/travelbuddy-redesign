@@ -135,14 +135,7 @@ public class PlacesService(TravelBuddyDbContext dbContext, IGeoapifyService geoa
 
         return places?.Select(p =>
             {
-                var existingPlace = existingPlaces.FirstOrDefault(ep => 
-                    ep.ProviderId == p.ProviderId
-                    || (ep.Name == p.Name &&
-                        ep.Country == p.Country &&
-                        ep.State == p.State &&
-                        ep.City == p.City &&
-                        ep.Street == p.Street &&
-                        ep.HouseNumber == p.HouseNumber));
+                var existingPlace = existingPlaces.FirstOrDefault(ep => IsSameProviderPlace(ep, p));
                 return new PlaceOverviewDTO
                 {
                     Id = existingPlace?.Id,
@@ -273,14 +266,7 @@ public class PlacesService(TravelBuddyDbContext dbContext, IGeoapifyService geoa
 
         var recommendations = places.Select(p =>
             {
-                var existingPlace = existingPlaces.FirstOrDefault(ep => 
-                    ep.ProviderId == p.ProviderId
-                    || (ep.Name == p.Name &&
-                        ep.Country == p.Country &&
-                        ep.State == p.State &&
-                        ep.City == p.City &&
-                        ep.Street == p.Street &&
-                        ep.HouseNumber == p.HouseNumber));
+                var existingPlace = existingPlaces.FirstOrDefault(ep => IsSameProviderPlace(ep, p));
                 return existingPlace ?? p;
             })
             .OrderByDescending(p => p.AverageRating)
@@ -325,32 +311,37 @@ public class PlacesService(TravelBuddyDbContext dbContext, IGeoapifyService geoa
             return [];
         }
 
-        var providerIds = places.Select(p => p.ProviderId).ToList();
-        var placeDetails = places.Select(p => new { p.Name, p.Country, p.State, p.City, p.Street, p.HouseNumber }).ToList();
-
-        // ProviderId and Name are required columns, so every exact match below has one of these values.
-        // Narrow the rows in the database and keep the exact (case-sensitive) matching in memory.
-        var providerIdsToQuery = providerIds.Where(id => id != null).Distinct().ToList();
-        var namesToQuery = placeDetails.Select(pd => pd.Name).Where(n => n != null).Distinct().ToList();
+        // Database pre-filter. It must stay a superset of IsSameProviderPlace: a match has an equal
+        // ProviderId, or an equal Name and City (ProviderId and Name are required columns, City can be null).
+        var providerIdsToQuery = places.Select(p => p.ProviderId).Where(id => id != null).Distinct().ToList();
+        var namesToQuery = places.Select(p => p.Name).Where(n => n != null).Distinct().ToList();
+        var citiesToQuery = places.Select(p => p.City).Where(c => c != null).Distinct().ToList();
+        var anyNullCity = places.Any(p => p.City == null);
 
         var existingPlaces = await _dbContext.Places
             .OfType<ProviderPlace>()
-            .Where(p => providerIdsToQuery.Contains(p.ProviderId) || namesToQuery.Contains(p.Name))
+            .Where(p => providerIdsToQuery.Contains(p.ProviderId)
+                || (namesToQuery.Contains(p.Name)
+                    && (citiesToQuery.Contains(p.City) || (anyNullCity && p.City == null))))
             .Include(p => p.Categories)
             .Include(p => p.Conditions)
             .Include(p => p.Reviews)
             .ToListAsync();
 
-        existingPlaces = existingPlaces
-            .Where(p => providerIds.Contains(p.ProviderId) ||
-                placeDetails.Any(pd => pd.Name == p.Name &&
-                               pd.Country == p.Country &&
-                               pd.State == p.State &&
-                               pd.City == p.City &&
-                               pd.Street == p.Street &&
-                               pd.HouseNumber == p.HouseNumber))
+        // The final match uses the same in-memory rule as before.
+        return existingPlaces
+            .Where(e => places.Any(p => IsSameProviderPlace(e, p)))
             .ToList();
+    }
 
-        return existingPlaces;
+    private static bool IsSameProviderPlace(ProviderPlace existing, ProviderPlace candidate)
+    {
+        return existing.ProviderId == candidate.ProviderId
+            || (existing.Name == candidate.Name &&
+                existing.Country == candidate.Country &&
+                existing.State == candidate.State &&
+                existing.City == candidate.City &&
+                existing.Street == candidate.Street &&
+                existing.HouseNumber == candidate.HouseNumber);
     }
 }
