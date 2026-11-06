@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
-using Azure.Identity;
 using TravelBuddyAPI.Data;
 using Microsoft.OpenApi.Models;
 using TravelBuddyAPI.Endpoints;
