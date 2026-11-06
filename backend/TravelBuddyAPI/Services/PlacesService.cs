@@ -320,11 +320,22 @@ public class PlacesService(TravelBuddyDbContext dbContext, IGeoapifyService geoa
 
     private async Task<List<ProviderPlace>> GetExistingProviderPlacesListAsync(List<ProviderPlace> places)
     {
+        if (places.Count == 0)
+        {
+            return [];
+        }
+
         var providerIds = places.Select(p => p.ProviderId).ToList();
         var placeDetails = places.Select(p => new { p.Name, p.Country, p.State, p.City, p.Street, p.HouseNumber }).ToList();
 
+        // ProviderId and Name are required columns, so every exact match below has one of these values.
+        // Narrow the rows in the database and keep the exact (case-sensitive) matching in memory.
+        var providerIdsToQuery = providerIds.Where(id => id != null).Distinct().ToList();
+        var namesToQuery = placeDetails.Select(pd => pd.Name).Where(n => n != null).Distinct().ToList();
+
         var existingPlaces = await _dbContext.Places
             .OfType<ProviderPlace>()
+            .Where(p => providerIdsToQuery.Contains(p.ProviderId) || namesToQuery.Contains(p.Name))
             .Include(p => p.Categories)
             .Include(p => p.Conditions)
             .Include(p => p.Reviews)
