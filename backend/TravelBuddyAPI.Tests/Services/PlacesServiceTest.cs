@@ -109,6 +109,52 @@ public class PlacesServiceTest
     }
 
     [Fact]
+    public async Task GetAutocompletePlacesAsync_MatchesExistingPlacesByProviderIdOrFullAddress()
+    {
+        // Arrange
+        var query = "Cafe";
+        var byProviderId = new ProviderPlace { Id = Guid.NewGuid(), ProviderId = "p1", Name = "Old Name", Country = "Poland", City = "Kraków" };
+        var byAddress = new ProviderPlace { Id = Guid.NewGuid(), ProviderId = "db-2", Name = "Cafe Two", Country = "Poland", City = "Kraków", Street = "Floriańska", HouseNumber = "2" };
+        var sameNameOtherCity = new ProviderPlace { Id = Guid.NewGuid(), ProviderId = "db-3", Name = "Cafe Three", Country = "Poland", City = "Gdańsk", Street = "Długa", HouseNumber = "3" };
+        var unrelated = new ProviderPlace { Id = Guid.NewGuid(), ProviderId = "db-4", Name = "Museum", Country = "Poland", City = "Warszawa" };
+
+        var options = new DbContextOptionsBuilder<TravelBuddyDbContext>()
+            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+            .Options;
+        using (var seedContext = new TravelBuddyDbContext(options))
+        {
+            await seedContext.Places.AddRangeAsync(byProviderId, byAddress, sameNameOtherCity, unrelated);
+            await seedContext.SaveChangesAsync();
+        }
+
+        // Fresh context: after the call its change tracker holds only the rows the query loaded.
+        using var serviceContext = new TravelBuddyDbContext(options);
+        var placesService = new PlacesService(serviceContext, _mockGeoapifyService.Object, _mockDbCache.Object);
+
+        var providerPlaces = new List<ProviderPlace>
+        {
+            new ProviderPlace { ProviderId = "p1", Name = "Cafe One", Country = "Poland", City = "Kraków" },
+            new ProviderPlace { ProviderId = "p2", Name = "Cafe Two", Country = "Poland", City = "Kraków", Street = "Floriańska", HouseNumber = "2" },
+            new ProviderPlace { ProviderId = "p3", Name = "Cafe Three", Country = "Poland", City = "Kraków", Street = "Długa", HouseNumber = "3" },
+        };
+        _mockGeoapifyService.Setup(s => s.GetAddressAutocompleteAsync(query, Enums.AddressLevel.amenity, null, null, null, "json"))
+            .ReturnsAsync(providerPlaces);
+
+        // Act
+        var result = await placesService.GetAutocompletePlacesAsync(query, null, null);
+
+        // Assert
+        Assert.Equal(3, result.Count);
+        Assert.Equal(byProviderId.Id, result.Single(r => r.ProviderId == "p1").Id);
+        Assert.Equal(byAddress.Id, result.Single(r => r.ProviderId == "p2").Id);
+        Assert.Null(result.Single(r => r.ProviderId == "p3").Id);
+
+        var loadedIds = serviceContext.ChangeTracker.Entries<ProviderPlace>().Select(e => e.Entity.Id).ToList();
+        Assert.DoesNotContain(unrelated.Id, loadedIds);
+        Assert.DoesNotContain(sameNameOtherCity.Id, loadedIds);
+    }
+
+    [Fact]
     public async Task AddPlaceAsync_ShouldAddProviderPlace()
     {
         // Arrange
