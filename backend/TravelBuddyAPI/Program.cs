@@ -90,24 +90,16 @@ namespace TravelBuddyAPI
 
             var databaseConnectionString = builder.Configuration.GetConnectionString("TravelBuddyDb");
 
-            try
-            {
-                if (string.IsNullOrWhiteSpace(databaseConnectionString))
-                    throw new InvalidOperationException("Database connection string 'TravelBuddyDb' is missing or empty.");
+            if (string.IsNullOrWhiteSpace(databaseConnectionString))
+                throw new InvalidOperationException(
+                    "Database connection string 'TravelBuddyDb' is missing or empty. " +
+                    "Set ConnectionStrings__TravelBuddyDb or run: " +
+                    "dotnet user-secrets set \"ConnectionStrings:TravelBuddyDb\" \"<connection string>\"");
 
-                builder.Services.AddDbContext<TravelBuddyDbContext>(options =>
-                {
-                    options.UseSqlServer(databaseConnectionString);
-                });
-            }
-            catch (Exception ex)
+            builder.Services.AddDbContext<TravelBuddyDbContext>(options =>
             {
-                using var loggerFactory = LoggerFactory.Create(lb => lb.AddConsole());
-                var logger = loggerFactory.CreateLogger<Program>();
-                logger.LogError(ex, "Failed to configure TravelBuddyDbContext. Skipping DbContext registration.");
-                if (ex.InnerException != null)
-                    logger.LogError("Inner exception: {InnerMessage}", ex.InnerException.Message);
-            }
+                options.UseSqlServer(databaseConnectionString);
+            });
 
             builder.Services.AddCors(options =>
             {
@@ -126,12 +118,12 @@ namespace TravelBuddyAPI
                 var dbContext = scope.ServiceProvider.GetRequiredService<TravelBuddyDbContext>();
                 dbContext.Database.Migrate();
             }
-            catch (Exception ex) when (ex is InvalidOperationException || ex is Microsoft.EntityFrameworkCore.Storage.RetryLimitExceededException || ex is Microsoft.Data.SqlClient.SqlException)
+            catch (Exception ex)
             {
-                var logger = app.Services.GetRequiredService<ILogger<Program>>();
-                logger.LogError(ex, "An error occurred while migrating the database: {Message}", ex.Message);
-                if (ex.InnerException != null)
-                    logger.LogError("Inner exception: {InnerMessage}", ex.InnerException.Message);
+                app.Logger.LogCritical(ex, "Database migration failed. Stopping the application.");
+                // Dispose the host so the console logger flushes its queue before the process dies.
+                ((IDisposable)app).Dispose();
+                throw;
             }
 
             // Development configuration
@@ -141,11 +133,11 @@ namespace TravelBuddyAPI
                 app.UseSwaggerUI();
             }
 
+            app.UseCors();
+
             app.UseAuthentication();
 
             app.UseAuthorization();
-
-            app.UseCors();
 
             // Mapping endpoints
             app.MapTripsEndpoints();

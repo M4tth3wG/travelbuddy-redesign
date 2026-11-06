@@ -20,6 +20,7 @@ services:
       context: .
       dockerfile: Dockerfile.api
     container_name: travel-buddy-api-container
+    restart: on-failure:5
     environment:
       - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT}
       - GEOAPIFY__KEY=${GEOAPIFY__KEY}
