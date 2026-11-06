@@ -91,7 +91,10 @@ namespace TravelBuddyAPI
             var databaseConnectionString = builder.Configuration.GetConnectionString("TravelBuddyDb");
 
             if (string.IsNullOrWhiteSpace(databaseConnectionString))
-                throw new InvalidOperationException("Database connection string 'TravelBuddyDb' is missing or empty.");
+                throw new InvalidOperationException(
+                    "Database connection string 'TravelBuddyDb' is missing or empty. " +
+                    "Set ConnectionStrings__TravelBuddyDb or run: " +
+                    "dotnet user-secrets set \"ConnectionStrings:TravelBuddyDb\" \"<connection string>\"");
 
             builder.Services.AddDbContext<TravelBuddyDbContext>(options =>
             {
@@ -109,10 +112,18 @@ namespace TravelBuddyAPI
             var app = builder.Build();
 
             // Migrate the database
-            using (var scope = app.Services.CreateScope())
+            try
             {
+                using var scope = app.Services.CreateScope();
                 var dbContext = scope.ServiceProvider.GetRequiredService<TravelBuddyDbContext>();
                 dbContext.Database.Migrate();
+            }
+            catch (Exception ex)
+            {
+                app.Logger.LogCritical(ex, "Database migration failed. Stopping the application.");
+                // Dispose the host so the console logger flushes its queue before the process dies.
+                ((IDisposable)app).Dispose();
+                throw;
             }
 
             // Development configuration
