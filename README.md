@@ -100,14 +100,25 @@ cp .env.example .env   # fill in the placeholders
 docker compose up
 ```
 
-The API is exposed on host port 80. With `ASPNETCORE_ENVIRONMENT=Development`, Swagger UI is available at `/swagger`.
+The API is exposed on host port 80. The template defaults to `ASPNETCORE_ENVIRONMENT=Production`. With `Development`, Swagger UI is available at `/swagger`, but the development-only `/geoapify/*` and `/nbp/*` endpoints are also mapped **without authentication**. Use `Development` only on a trusted machine and network.
 
-Without Docker, provide `ConnectionStrings:TravelBuddyDb`, `Geoapify:Key`, `Cognito:Authority` and `Cognito:Audience` through user secrets or environment variables, then:
+> **Note:** `docker-compose.yml` publishes the API (port 80) and SQL Server with the `sa` login (port 1433) on all network interfaces. Run the stack on a trusted network, or change the port mappings to `127.0.0.1:<port>:<port>`.
+
+Without Docker, set the four required settings through user secrets (or environment variables), then run the API:
 
 ```bash
 cd backend
 dotnet user-secrets set "ConnectionStrings:TravelBuddyDb" "<connection string>" --project TravelBuddyAPI
+dotnet user-secrets set "Geoapify:Key" "<geoapify-api-key>" --project TravelBuddyAPI
+dotnet user-secrets set "Cognito:Authority" "https://cognito-idp.<region>.amazonaws.com/<user-pool-id>" --project TravelBuddyAPI
+dotnet user-secrets set "Cognito:Audience" "<cognito-audience>" --project TravelBuddyAPI
 dotnet run --project TravelBuddyAPI
+```
+
+The default launch profile listens on `http://localhost:5142` only. To reach the API from a phone or emulator, bind it to all interfaces:
+
+```bash
+dotnet run --project TravelBuddyAPI --urls http://0.0.0.0:5142
 ```
 
 Tests:
@@ -128,7 +139,7 @@ npm install
 npm start
 ```
 
-`EXPO_PUBLIC_FEATURE_VERSION` selects the UI variant (`v1` is the baseline, plus `v2` and `v3`). Development, preview (`.apk`) and production builds are described in [`app/README.md`](app/README.md). Linting: `npm run lint`.
+`EXPO_PUBLIC_FEATURE_VERSION` selects the UI variant (`v1` is the baseline, plus `v2` and `v3`). Development, preview (`.apk`) and production builds are described in [`app/README.md`](app/README.md). `build:dev` and `build:prev` load optional `.env.development` and `.env.preview` overrides on top of `.env`. If those files are missing, the build uses the base `.env` values, so create them when a build needs a different API URL. Linting: `npm run lint`.
 
 ## Project history
 
@@ -158,7 +169,7 @@ Backend (my part):
 
 ### 2026: Portfolio maintenance
 
-Bug fixes with regression tests: the trip edit no longer overwrites the trip note, editing a trip point now updates its place, startup fails fast on DB errors and applies CORS before auth, and existing provider places are filtered correctly. Leftover Azure, Key Vault and DotNetEnv code was also removed.
+Bug fixes with regression tests: the trip edit no longer overwrites the trip note, editing a trip point now updates its place, startup fails fast on DB errors and applies CORS before auth, and existing provider places are filtered correctly. The Key Vault, Azure Identity and DotNetEnv packages, the Key Vault secret manager and the Azure staging workflow were also removed. The unused `Microsoft.Identity.Web` packages from the earlier Azure AD B2C integration are still referenced in the project file.
 
 ## Documentation
 
