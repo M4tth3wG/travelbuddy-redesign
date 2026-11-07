@@ -38,7 +38,8 @@ npx jest path/to/file
 
 ## Backend gotchas
 
-- `Data/ModelBuilderExtension.cs` seeds data with `Guid.NewGuid()`. Adding a migration regenerates all seed rows and produces a huge diff. Do not add a migration unless the task requires a schema change, and warn me first.
+- `Data/ModelBuilderExtension.cs` seeds data with fixed GUIDs that match the migrations snapshot. Never use `Guid.NewGuid()` or other non-deterministic values in seed data, or every migration will delete and re-insert seed rows. New seed rows need new hard-coded GUIDs. `backend/TravelBuddyAPI.Tests/Data/ModelSnapshotTest.cs` fails when the model differs from the snapshot; run it from `backend/` with `dotnet test --filter "FullyQualifiedName~ModelSnapshotTest"`.
+- Do not add a migration unless the task requires a schema change, and warn me first.
 - Migrations run on startup through `Database.Migrate()`.
 - Tests use EF Core InMemory, so they do not verify SQL translation, transactions or relational constraints.
 
